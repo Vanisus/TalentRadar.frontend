@@ -1,0 +1,121 @@
+import { useEffect } from 'react';
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { AppShell, Group, Text, Center, Loader } from '@mantine/core';
+import { LoginPage } from './features/auth/LoginPage';
+import { RegisterPage } from './features/auth/RegisterPage';
+import { CandidateDashboard } from './features/candidate/CandidateDashboard';
+import { useCurrentUser } from './shared/auth';
+import type { UserRole } from './shared/auth';
+
+
+// Временные заглушки дашбордов — потом заменим реальными
+
+function HRDashboard() {
+  return (
+    <Center sx={{ height: '100%' }}>
+      <Text>HR dashboard</Text>
+    </Center>
+  );
+}
+
+function AdminDashboard() {
+  return (
+    <Center sx={{ height: '100%' }}>
+      <Text>Admin dashboard</Text>
+    </Center>
+  );
+}
+
+// Обёртка для защищённых роутов
+function ProtectedRoute({ allowedRoles }: { allowedRoles: UserRole[] }) {
+  const { data: user, isLoading } = useCurrentUser();
+  const location = useLocation();
+
+  if (isLoading) {
+    return (
+      <Center sx={{ height: '100vh' }}>
+        <Loader />
+      </Center>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/login" state={{ from: location }} replace />;
+  }
+
+  if (!allowedRoles.includes(user.role)) {
+    return <Navigate to="/" replace />;
+  }
+
+  return (
+  <AppShell
+    header={{
+      height: 60,
+    }}
+  >
+    <AppShell.Header>
+      <Group justify="space-between" h="100%" px="md">
+        <Text fw={600}>TalentRadar</Text>
+        <Text size="sm">{user.email}</Text>
+      </Group>
+    </AppShell.Header>
+
+    <AppShell.Main>
+      {user.role === 'candidate' && <CandidateDashboard />}
+      {user.role === 'hr' && <HRDashboard />}
+      {user.role === 'admin' && <AdminDashboard />}
+    </AppShell.Main>
+  </AppShell>
+);
+
+}
+
+export default function App() {
+  const { data: user, isLoading } = useCurrentUser();
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    // если уже залогинен и зашёл на /login или /register — редиректим на корень
+    if (!isLoading && user && (location.pathname === '/login' || location.pathname === '/register')) {
+      navigate('/', { replace: true });
+    }
+  }, [user, isLoading, location.pathname, navigate]);
+
+  if (isLoading) {
+    return (
+      <Center sx={{ height: '100vh' }}>
+        <Loader />
+      </Center>
+    );
+  }
+
+  return (
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
+
+      {/* корень: если не залогинен — на /login, если залогинен — в свой дашборд */}
+      <Route
+        path="/"
+        element={
+          user ? (
+            <ProtectedRoute allowedRoles={['candidate', 'hr', 'admin']} />
+          ) : (
+            <Navigate to="/login" replace />
+          )
+        }
+      />
+
+      {/* запасной роут 404 */}
+      <Route
+        path="*"
+        element={
+          <Center sx={{ height: '100vh' }}>
+            <Text>Страница не найдена</Text>
+          </Center>
+        }
+      />
+    </Routes>
+  );
+}
