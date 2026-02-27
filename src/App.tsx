@@ -4,6 +4,7 @@ import { AppShell, Group, Text, Center, Loader } from '@mantine/core';
 import { LoginPage } from './features/auth/LoginPage';
 import { RegisterPage } from './features/auth/RegisterPage';
 import { CandidateDashboard } from './features/candidate/CandidateDashboard';
+import { AppHeader } from '@/widgets/AppHeader/AppHeader';
 import { useCurrentUser } from './shared/auth';
 import type { UserRole } from './shared/auth';
 
@@ -26,7 +27,6 @@ function AdminDashboard() {
   );
 }
 
-// Обёртка для защищённых роутов
 function ProtectedRoute({ allowedRoles }: { allowedRoles: UserRole[] }) {
   const { data: user, isLoading } = useCurrentUser();
   const location = useLocation();
@@ -48,26 +48,22 @@ function ProtectedRoute({ allowedRoles }: { allowedRoles: UserRole[] }) {
   }
 
   return (
-  <AppShell
-    header={{
-      height: 60,
-    }}
-  >
-    <AppShell.Header>
-      <Group justify="space-between" h="100%" px="md">
-        <Text fw={600}>TalentRadar</Text>
-        <Text size="sm">{user.email}</Text>
-      </Group>
-    </AppShell.Header>
+    <AppShell
+      header={{
+        height: 60,
+      }}
+    >
+      <AppShell.Header>
+        <AppHeader />
+      </AppShell.Header>
 
-    <AppShell.Main>
-      {user.role === 'candidate' && <CandidateDashboard />}
-      {user.role === 'hr' && <HRDashboard />}
-      {user.role === 'admin' && <AdminDashboard />}
-    </AppShell.Main>
-  </AppShell>
-);
-
+      <AppShell.Main>
+        {user.role === 'candidate' && <CandidateDashboard />}
+        {user.role === 'hr' && <HRDashboard />}
+        {user.role === 'admin' && <AdminDashboard />}
+      </AppShell.Main>
+    </AppShell>
+  );
 }
 
 export default function App() {

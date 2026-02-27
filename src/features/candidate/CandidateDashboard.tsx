@@ -1,18 +1,24 @@
 // src/features/candidate/CandidateDashboard.tsx
 import { useEffect, useState } from 'react';
 import { Tabs, Container, Stack, Title, Text, Card, Badge, Group, Loader, Center, Button } from '@mantine/core';
-import { useCandidateVacancies, useCandidateApplications } from './api';
+import { useCandidateVacancies, useCandidateApplications, useRecommendedVacancies } from './api';
 import type { ApplicationStatus } from './api';
 import { useCandidateProfile, useUpdateCandidateProfile } from './profileApi';
 import { useExperiences, useAddExperience, useDeleteExperience } from './experienceApi';
 import { usePortfolioItems, useAddPortfolioItem, useDeletePortfolioItem } from './portfolioApi';
 import { useEducations, useAddEducation, useDeleteEducation } from './educationApi';
-
+import { useCertificates, useUploadCertificate } from './certificatesApi';
+import { useResumeRecommendations, useUploadResume } from './resumeApi';
+import { NotificationsBell } from '@/features/notifications/NotificationsBell';
 import { Checkbox } from '@mantine/core';
+import { useSkills, useAddSkill, useDeleteSkill } from './skillsApi';
+import { Chip} from '@mantine/core';
 
 import { Textarea, NumberInput, TextInput } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { useForm } from '@mantine/form';
+import { API_BASE } from '../../shared/api';
+
 
 function VacanciesTab() {
   const { data, isLoading, isError, error } = useCandidateVacancies();
@@ -78,6 +84,146 @@ function statusLabel(status: ApplicationStatus) {
   }
 }
 
+function RecommendedVacanciesTab() {
+  const [minScore, setMinScore] = useState<number>(0);
+  const { data, isLoading, isError, error } = useRecommendedVacancies(minScore);
+
+  if (isLoading) {
+    return (
+      <Center mt="xl">
+        <Loader />
+      </Center>
+    );
+  }
+
+  if (isError) {
+    return (
+      <Text c="red" mt="md">
+        {(error as Error).message}
+      </Text>
+    );
+  }
+
+if (!data || data.length === 0) {
+  return (
+    <Stack mt="md">
+      <Text>Пока нет рекомендованных вакансий.</Text>
+      <Text size="sm" c="dimmed">
+        Загрузите резюме и заполните профиль, чтобы мы могли подобрать
+        подходящие вакансии.
+      </Text>
+    </Stack>
+  );
+}
+
+
+  return (
+    <Stack mt="md">
+      <Group align="flex-end">
+        <NumberInput
+          label="Минимальный match-score"
+          min={0}
+          max={100}
+          step={5}
+          value={minScore}
+          onChange={(value) => setMinScore(Number(value) || 0)}
+        />
+      </Group>
+
+      {data.map((v) => (
+        <Card key={v.id} withBorder shadow="sm">
+          <Group justify="space-between" mb="xs">
+            <div>
+              <Title order={4}>{v.title}</Title>
+              <Text size="sm" c="dimmed">
+                Совпадение: {v.match_score.toFixed(1)}%
+              </Text>
+            </div>
+            <Badge color={v.is_active ? 'green' : 'gray'}>
+              {v.is_active ? 'Активна' : 'Неактивна'}
+            </Badge>
+          </Group>
+          <Text size="sm" mb="sm">
+            {v.description}
+          </Text>
+          <Group gap="xs">
+            {v.required_skills.map((s) => (
+              <Badge key={s} variant="light">
+                {s}
+              </Badge>
+            ))}
+          </Group>
+        </Card>
+      ))}
+    </Stack>
+  );
+}
+
+
+
+function SkillsSection() {
+  const { data, isLoading } = useSkills();
+  const addMutation = useAddSkill();
+  const deleteMutation = useDeleteSkill();
+
+  const [newSkill, setNewSkill] = useState('');
+
+  const handleAdd = async () => {
+    const name = newSkill.trim();
+    if (!name) return;
+    await addMutation.mutateAsync({ name });
+    setNewSkill('');
+  };
+
+  return (
+    <Stack mt="xl">
+      <Title order={4}>Навыки</Title>
+
+      {isLoading ? (
+        <Loader size="sm" />
+      ) : !data || data.length === 0 ? (
+        <Text size="sm">Навыки ещё не добавлены.</Text>
+      ) : (
+        <Group gap="xs">
+          {data.map((skill) => (
+            <Badge
+              key={skill.id}
+              rightSection={
+                <Button
+                  size="xs"
+                  variant="subtle"
+                  color="red"
+                  loading={deleteMutation.isPending && deleteMutation.variables === skill.id}
+                  onClick={() => deleteMutation.mutate(skill.id)}
+                  px={4}
+                >
+                  ×
+                </Button>
+              }
+            >
+              {skill.name}
+            </Badge>
+          ))}
+        </Group>
+      )}
+
+      <Group align="flex-end">
+        <TextInput
+          label="Добавить навык"
+          placeholder="Например, Python, React"
+          value={newSkill}
+          onChange={(e) => setNewSkill(e.currentTarget.value)}
+          style={{ flex: 1 }}
+        />
+        <Button onClick={handleAdd} loading={addMutation.isPending}>
+          Добавить
+        </Button>
+      </Group>
+    </Stack>
+  );
+}
+
+
 function ApplicationsTab() {
   const { data, isLoading, isError, error } = useCandidateApplications();
 
@@ -129,6 +275,110 @@ function ApplicationsTab() {
           )}
         </Card>
       ))}
+    </Stack>
+  );
+}
+
+function CertificatesSection() {
+  const { data, isLoading } = useCertificates();
+  const uploadMutation = useUploadCertificate();
+
+  const [title, setTitle] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+
+  const handleUpload = async () => {
+    if (!file) return;
+    await uploadMutation.mutateAsync({ file, title: title || undefined });
+    setTitle('');
+    setFile(null);
+  };
+
+  const resolveUrl = (path?: string | null) => {
+    if (!path) return null;
+    if (path.startsWith('http')) return path;
+    return `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
+  };
+
+  return (
+    <Stack mt="xl">
+      <Title order={4}>Сертификаты</Title>
+
+      {isLoading ? (
+        <Loader size="sm" />
+      ) : !data || data.length === 0 ? (
+        <Text size="sm">Сертификатов пока нет.</Text>
+      ) : (
+        <Stack>
+          {data.map((cert) => {
+            const previewUrl = resolveUrl(cert.preview_path || cert.file_path);
+            return (
+              <Card key={cert.id} withBorder>
+                <Group justify="space-between" mb="xs">
+                  <div>
+                    <Text fw={500}>{cert.title}</Text>
+                    {cert.issuer && (
+                      <Text size="sm" c="dimmed">
+                        {cert.issuer}
+                      </Text>
+                    )}
+                    {cert.issue_date && (
+                      <Text size="sm" c="dimmed">
+                        Дата выдачи: {cert.issue_date}
+                      </Text>
+                    )}
+                  </div>
+                  {previewUrl && (
+                    <Button
+                      size="xs"
+                      variant="light"
+                      component="a"
+                      href={previewUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Открыть
+                    </Button>
+                  )}
+                </Group>
+                {previewUrl && (
+                  <img
+                    src={previewUrl}
+                    alt={cert.title}
+                    style={{ maxWidth: '100%', maxHeight: 200, objectFit: 'contain' }}
+                  />
+                )}
+              </Card>
+            );
+          })}
+        </Stack>
+      )}
+
+      <Card withBorder>
+        <Title order={5} mb="sm">
+          Загрузить сертификат
+        </Title>
+        <Stack>
+          <TextInput
+            label="Название"
+            value={title}
+            onChange={(e) => setTitle(e.currentTarget.value)}
+            placeholder="Например, AWS Certified Developer"
+          />
+          <input
+            type="file"
+            accept=".pdf,.png,.jpg,.jpeg"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          />
+          {uploadMutation.isError && (
+            <Text c="red" size="sm">
+              {(uploadMutation.error as Error).message}
+            </Text>
+          )}
+          <Button onClick={handleUpload} loading={uploadMutation.isPending} disabled={!file}>
+            Загрузить
+          </Button>
+        </Stack>
+      </Card>
     </Stack>
   );
 }
@@ -485,6 +735,86 @@ function ExperienceSection() {
   );
 }
 
+function ResumeSection() {
+  const { data, isLoading, isError, error } = useResumeRecommendations();
+  const uploadMutation = useUploadResume();
+  const [file, setFile] = useState<File | null>(null);
+
+  const handleUpload = async () => {
+    if (!file) return;
+    await uploadMutation.mutateAsync(file);
+    setFile(null);
+  };
+
+  return (
+    <Stack mt="xl">
+      <Title order={4}>Резюме</Title>
+
+      <Group align="flex-end">
+        <div>
+          <Text size="sm" mb={4}>
+            Загрузите актуальное резюме (PDF/DOC/DOCX), чтобы улучшить рекомендации по вакансиям.
+          </Text>
+          <input
+            type="file"
+            accept=".pdf,.doc,.docx"
+            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+          />
+        </div>
+        <Button
+          onClick={handleUpload}
+          loading={uploadMutation.isPending}
+          disabled={!file}
+        >
+          Загрузить резюме
+        </Button>
+      </Group>
+
+      {uploadMutation.isError && (
+        <Text c="red" size="sm">
+          {(uploadMutation.error as Error).message}
+        </Text>
+      )}
+
+      <Title order={5} mt="lg">
+        Рекомендации по резюме
+      </Title>
+
+      {isLoading ? (
+        <Loader size="sm" />
+      ) : isError ? (
+        <Text c="red" size="sm">
+          {(error as Error).message}
+        </Text>
+      ) : !data || data.length === 0 ? (
+        <Text size="sm">Пока нет рекомендаций. Загрузите резюме и заполните профиль.</Text>
+      ) : (
+        <Stack>
+          {data.map((rec) => (
+            <Card key={rec.id} withBorder>
+              <Group justify="space-between" mb="xs">
+                <Text fw={500}>{rec.title}</Text>
+                <Badge
+                  color={
+                    rec.priority === 'high'
+                      ? 'red'
+                      : rec.priority === 'medium'
+                      ? 'yellow'
+                      : 'gray'
+                  }
+                >
+                  {rec.priority}
+                </Badge>
+              </Group>
+              <Text size="sm">{rec.description}</Text>
+            </Card>
+          ))}
+        </Stack>
+      )}
+    </Stack>
+  );
+}
+
 
 function ProfileTab() {
   const { data, isLoading, isError, error } = useCandidateProfile();
@@ -590,10 +920,12 @@ function ProfileTab() {
           </Group>
         </Stack>
       </form>
+      <ResumeSection />
       <EducationSection />
       <ExperienceSection />
       <PortfolioSection />
-
+      <CertificatesSection />
+      <SkillsSection />
     </>
   );
 
@@ -605,18 +937,23 @@ export function CandidateDashboard() {
 
   return (
     <Container fluid py="md">
-      <Title order={2} mb="md">
-        Личный кабинет кандидата
-      </Title>
+      <Group justify="space-between" mb="md">
+        <Title order={2}>Личный кабинет кандидата</Title>
+        <NotificationsBell />
+      </Group>
       <Tabs value={tab} onChange={setTab}>
         <Tabs.List>
           <Tabs.Tab value="vacancies">Вакансии</Tabs.Tab>
+          <Tabs.Tab value="recommended">Рекомендованные</Tabs.Tab>
           <Tabs.Tab value="applications">Мои отклики</Tabs.Tab>
           <Tabs.Tab value="profile">Профиль</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel value="vacancies">
           <VacanciesTab />
+        </Tabs.Panel>
+        <Tabs.Panel value="recommended">
+          <RecommendedVacanciesTab />
         </Tabs.Panel>
         <Tabs.Panel value="applications">
           <ApplicationsTab />

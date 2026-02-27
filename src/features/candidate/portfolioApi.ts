@@ -19,7 +19,7 @@ export interface PortfolioItemCreate {
 export function usePortfolioItems() {
   return useQuery<PortfolioItem[]>({
     queryKey: ['candidate', 'portfolio'],
-    queryFn: () => apiFetch<PortfolioItem[]>('/candidates/profile/portfolio_items'),
+    queryFn: () => apiFetch<PortfolioItem[]>('/candidates/profile/portfolio'),
   });
 }
 
@@ -27,7 +27,7 @@ export function useAddPortfolioItem() {
   const qc = useQueryClient();
   return useMutation<PortfolioItem, Error, PortfolioItemCreate>({
     mutationFn: (payload) =>
-      apiFetch<PortfolioItem>('/candidates/profile/portfolio_items', {
+      apiFetch<PortfolioItem>('/candidates/profile/portfolio', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -42,7 +42,7 @@ export function useDeletePortfolioItem() {
   const qc = useQueryClient();
   return useMutation<void, Error, number>({
     mutationFn: (id) =>
-      apiFetch<void>(`/candidates/profile/portfolio_items/${id}`, {
+      apiFetch<void>(`/candidates/profile/portfolio/${id}`, {
         method: 'DELETE',
       }),
     onSuccess: () => {
