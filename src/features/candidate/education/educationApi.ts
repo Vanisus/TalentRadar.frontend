@@ -1,13 +1,13 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiFetch } from '../../shared/api';
+import { apiFetch } from '../../../shared/api';
 
 export interface Education {
   id: number;
   institution: string;
   degree: string;
   field_of_study?: string | null;
-  start_date: string; // YYYY-MM-DD
-  end_date?: string | null;
+  start_year: number;
+  end_year?: number | null;
   is_current: boolean;
 }
 
@@ -15,10 +15,11 @@ export interface EducationCreate {
   institution: string;
   degree: string;
   field_of_study?: string | null;
-  start_date: string;
-  end_date?: string | null;
-  is_current: boolean;
+  start_year: number;
+  end_year?: number | null;
+  is_current?: boolean;
 }
+
 
 export function useEducations() {
   return useQuery<Education[]>({
@@ -47,6 +48,21 @@ export function useDeleteEducation() {
   return useMutation<void, Error, number>({
     mutationFn: (id) =>
       apiFetch<void>(`/candidates/profile/educations/${id}`, { method: 'DELETE' }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['candidate', 'educations'] });
+    },
+  });
+}
+
+export function useUpdateEducation() {
+  const qc = useQueryClient();
+  return useMutation<void, Error, { id: number } & EducationCreate>({
+    mutationFn: ({ id, ...payload }) =>
+      apiFetch<void>(`/candidates/profile/educations/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['candidate', 'educations'] });
     },

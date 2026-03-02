@@ -1,20 +1,22 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch, API_BASE, getAuthToken } from '../../shared/api';
 
-export interface ResumeRecommendation {
-  id: number;
-  title: string;
-  description: string;
-  priority: 'low' | 'medium' | 'high';
+export interface ResumeRecommendationsResponse {
+  recommendations: string[];
 }
 
 export function useResumeRecommendations() {
-  return useQuery<ResumeRecommendation[]>({
+  return useQuery<string[]>({
     queryKey: ['candidate', 'resume', 'recommendations'],
-    queryFn: () =>
-      apiFetch<ResumeRecommendation[]>('/candidates/resume/recommendations'),
+    queryFn: async () => {
+      const result = await apiFetch<ResumeRecommendationsResponse>(
+        '/candidates/resume/recommendations',
+      );
+      return result?.recommendations ?? [];
+    },
   });
 }
+
 
 export function useUploadResume() {
   const qc = useQueryClient();
@@ -57,3 +59,16 @@ export function useUploadResume() {
     },
   });
 }
+
+export interface ResumeStatus {
+  has_resume_file: boolean;
+  resume_file_path?: string | null;
+}
+
+export function useResumeStatus() {
+  return useQuery<ResumeStatus>({
+    queryKey: ['candidate', 'resume', 'status'],
+    queryFn: () => apiFetch<ResumeStatus>('/candidates/profile/resume/status'),
+  });
+}
+

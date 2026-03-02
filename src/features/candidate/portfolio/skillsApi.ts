@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiFetch } from '../../shared/api';
+import { apiFetch } from '@/shared/api';
 
 export interface CandidateSkill {
   id: number;

@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiFetch } from '../../shared/api';
+import { apiFetch } from '../../../shared/api';
 
 export interface PortfolioItem {
   id: number;
@@ -44,6 +44,21 @@ export function useDeletePortfolioItem() {
     mutationFn: (id) =>
       apiFetch<void>(`/candidates/profile/portfolio/${id}`, {
         method: 'DELETE',
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['candidate', 'portfolio'] });
+    },
+  });
+}
+
+export function useUpdatePortfolioItem() {
+  const qc = useQueryClient();
+  return useMutation<PortfolioItem, Error, { id: number } & PortfolioItemCreate>({
+    mutationFn: ({ id, ...payload }) =>
+      apiFetch<PortfolioItem>(`/candidates/profile/portfolio/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['candidate', 'portfolio'] });
