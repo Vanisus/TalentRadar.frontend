@@ -4,20 +4,16 @@ import { AppShell, Group, Text, Center, Loader } from '@mantine/core';
 import { LoginPage } from './features/auth/LoginPage';
 import { RegisterPage } from './features/auth/RegisterPage';
 import { CandidateDashboard } from './features/candidate/CandidateDashboard';
+import { HRDashboard } from './features/hr/HRDashboard';
 import { AppHeader } from '@/widgets/AppHeader/AppHeader';
 import { useCurrentUser } from './shared/auth';
 import type { UserRole } from './shared/auth';
 
+// ДОБАВИТЬ импорт вверху:
+
 
 // Временные заглушки дашбордов — потом заменим реальными
 
-function HRDashboard() {
-  return (
-    <Center sx={{ height: '100%' }}>
-      <Text>HR dashboard</Text>
-    </Center>
-  );
-}
 
 function AdminDashboard() {
   return (

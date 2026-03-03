@@ -213,196 +213,6 @@ function SkillsSection() {
   );
 }
 
-
-// ─── Сертификаты ──────────────────────────────────────────────────────────────
-
-function CertificatesSection() {
-  const { data, isLoading } = useCertificates();
-  const uploadMutation = useUploadCertificate();
-  const [title, setTitle] = useState('');
-  const [file, setFile] = useState<File | null>(null);
-
-  const handleUpload = async () => {
-    if (!file) return;
-    await uploadMutation.mutateAsync({ file, title: title || undefined });
-    setTitle('');
-    setFile(null);
-  };
-
-  const resolveUrl = (path?: string | null) => {
-    if (!path) return null;
-    if (path.startsWith('http')) return path;
-    return `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
-  };
-
-  return (
-    <Stack mt="xl">
-      <Title order={4}>Сертификаты</Title>
-      {isLoading ? (
-        <Loader size="sm" />
-      ) : !data || data.length === 0 ? (
-        <Text size="sm">Сертификатов пока нет.</Text>
-      ) : (
-        <Stack>
-          {data.map((cert) => {
-            const previewUrl = resolveUrl(cert.preview_path || cert.file_path);
-            return (
-              <Card key={cert.id} withBorder>
-                <Group justify="space-between" mb="xs">
-                  <div>
-                    <Text fw={500}>{cert.title}</Text>
-                    {cert.issuer && <Text size="sm" c="dimmed">{cert.issuer}</Text>}
-                    {cert.issue_date && (
-                      <Text size="sm" c="dimmed">Дата выдачи: {cert.issue_date}</Text>
-                    )}
-                  </div>
-                  {previewUrl && (
-                    <Button
-                      size="xs"
-                      variant="light"
-                      component="a"
-                      href={previewUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      Открыть
-                    </Button>
-                  )}
-                </Group>
-                {previewUrl && (
-                  <img
-                    src={previewUrl}
-                    alt={cert.title}
-                    style={{ maxWidth: '100%', maxHeight: 200, objectFit: 'contain' }}
-                  />
-                )}
-              </Card>
-            );
-          })}
-        </Stack>
-      )}
-      <Card withBorder>
-        <Title order={5} mb="sm">Загрузить сертификат</Title>
-        <Stack>
-          <TextInput
-            label="Название"
-            value={title}
-            onChange={(e) => setTitle(e.currentTarget.value)}
-            placeholder="Например, AWS Certified Developer"
-          />
-          <input
-            type="file"
-            accept=".pdf,.png,.jpg,.jpeg"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-          />
-          {uploadMutation.isError && (
-            <Text c="red" size="sm">{(uploadMutation.error as Error).message}</Text>
-          )}
-          <Button onClick={handleUpload} loading={uploadMutation.isPending} disabled={!file}>
-            Загрузить
-          </Button>
-        </Stack>
-      </Card>
-    </Stack>
-  );
-}
-
-
-// ─── Портфолио ────────────────────────────────────────────────────────────────
-
-function PortfolioSection() {
-  const { data, isLoading } = usePortfolioItems();
-  const addMutation = useAddPortfolioItem();
-  const deleteMutation = useDeletePortfolioItem();
-  const [title, setTitle] = useState('');
-  const [url, setUrl] = useState('');
-  const [description, setDescription] = useState('');
-
-  const handleAdd = async () => {
-    if (!title) return;
-    await addMutation.mutateAsync({
-      title,
-      url: url || null,
-      description: description || null,
-    });
-    setTitle('');
-    setUrl('');
-    setDescription('');
-  };
-
-  return (
-    <Stack mt="xl">
-      <Title order={4}>Портфолио</Title>
-      {isLoading ? (
-        <Loader size="sm" />
-      ) : !data || data.length === 0 ? (
-        <Text size="sm">Элементов портфолио пока нет.</Text>
-      ) : (
-        <Stack>
-          {data.map((item) => (
-            <Card key={item.id} withBorder>
-              <Group justify="space-between" mb="xs">
-                <div>
-                  <Text fw={500}>{item.title}</Text>
-                  {item.url && (
-                    <Text
-                      size="sm"
-                      c="blue"
-                      component="a"
-                      href={item.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      {item.url}
-                    </Text>
-                  )}
-                </div>
-                <Button
-                  size="xs"
-                  variant="subtle"
-                  color="red"
-                  loading={deleteMutation.isPending && deleteMutation.variables === item.id}
-                  onClick={() => deleteMutation.mutate(item.id)}
-                >
-                  Удалить
-                </Button>
-              </Group>
-              {item.description && (
-                <Text size="sm" mt={4}>{item.description}</Text>
-              )}
-            </Card>
-          ))}
-        </Stack>
-      )}
-      <Card withBorder>
-        <Title order={5} mb="sm">Добавить элемент портфолио</Title>
-        <Stack>
-          <TextInput
-            label="Название"
-            value={title}
-            onChange={(e) => setTitle(e.currentTarget.value)}
-            required
-          />
-          <TextInput
-            label="Ссылка (GitHub, Behance и т.п.)"
-            value={url}
-            onChange={(e) => setUrl(e.currentTarget.value)}
-          />
-          <Textarea
-            label="Описание"
-            value={description}
-            onChange={(e) => setDescription(e.currentTarget.value)}
-          />
-          <Button onClick={handleAdd} loading={addMutation.isPending}>
-            Сохранить элемент
-          </Button>
-        </Stack>
-      </Card>
-    </Stack>
-  )
-}
-
-
 // ─── Резюме ───────────────────────────────────────────────────────────────────
 
 function ResumeSection() {
@@ -515,14 +325,12 @@ function ResumeSection() {
   );
 }
 
-
-
-
 // ─── Профиль ──────────────────────────────────────────────────────────────────
 
 function ProfileTab() {
   const { data, isLoading, isError, error } = useCandidateProfile();
   const updateMutation = useUpdateCandidateProfile();
+  const [isEditing, setIsEditing] = useState(false);
 
   const form = useForm({
     initialValues: {
@@ -532,7 +340,7 @@ function ProfileTab() {
       city: '',
       phone: '',
       telegram: '',
-      birth_date: null as string | null,  // строка YYYY-MM-DD
+      birth_date: null as string | null,
     },
   });
 
@@ -545,7 +353,7 @@ function ProfileTab() {
       city: data.city ?? '',
       phone: data.phone ?? '',
       telegram: data.telegram ?? '',
-      birth_date: data.birth_date ?? null,  // уже строка с бэка
+      birth_date: data.birth_date ?? null,
     });
   }, [data]);
 
@@ -557,9 +365,10 @@ function ProfileTab() {
       city: values.city || null,
       phone: values.phone || null,
       telegram: values.telegram || null,
-      birth_date: values.birth_date || null,  // строка YYYY-MM-DD или null
+      birth_date: values.birth_date || null,
     };
     await updateMutation.mutateAsync(payload);
+    setIsEditing(false);
   });
 
   if (isLoading) return <Center mt="xl"><Loader /></Center>;
@@ -567,49 +376,119 @@ function ProfileTab() {
 
   return (
     <>
-      <form onSubmit={handleSubmit}>
-        <Stack mt="md" maw={500}>
-          <TextInput label="Город" {...form.getInputProps('city')} />
-          <TextInput label="Желаемая должность" {...form.getInputProps('desired_position')} />
-          <NumberInput
-            label="Желаемая зарплата"
-            {...form.getInputProps('desired_salary')}
-            min={0}
-          />
-          <TextInput label="Телефон" {...form.getInputProps('phone')} />
-          <TextInput label="Telegram" {...form.getInputProps('telegram')} />
-          <DateInput
-            label="Дата рождения"
-            valueFormat="DD.MM.YYYY"
-            value={form.values.birth_date}
-            onChange={(value) => form.setFieldValue('birth_date', value)}
-          />
-          <Textarea
-            label="О себе"
-            minRows={3}
-            autosize
-            {...form.getInputProps('about_me')}
-          />
-          {updateMutation.isError && (
-            <Text c="red" size="sm">
-              {(updateMutation.error as Error).message}
-            </Text>
-          )}
-          <Group>
-            <Button type="submit" loading={updateMutation.isLoading}>
-              Сохранить
-            </Button>
-          </Group>
-        </Stack>
-      </form>
+      <Card withBorder p="md" radius="md" mt="md" maw={600}>
+        {!isEditing ? (
+          // ─── Режим просмотра ───────────────────────────────────────
+          <Stack gap="xs">
+            <Group justify="space-between" mb="xs">
+              <Title order={4}>Основная информация</Title>
+              <Button size="xs" variant="subtle" onClick={() => setIsEditing(true)}>
+                Редактировать
+              </Button>
+            </Group>
+
+            <ProfileRow label="Город" value={data?.city} />
+            <ProfileRow label="Желаемая должность" value={data?.desired_position} />
+            <ProfileRow
+              label="Желаемая зарплата"
+              value={data?.desired_salary ? `${data.desired_salary} ₽` : undefined}
+            />
+            <ProfileRow label="Телефон" value={data?.phone} />
+            <ProfileRow label="Telegram" value={data?.telegram} />
+            <ProfileRow
+              label="Дата рождения"
+              value={
+                data?.birth_date
+                  ? data.birth_date.split('-').reverse().join('.')
+                  : undefined
+              }
+            />
+            {data?.about_me && (
+              <Stack gap={2} mt="xs">
+                <Text size="sm" c="dimmed" fw={500}>О себе</Text>
+                <Text size="sm">{data.about_me}</Text>
+              </Stack>
+            )}
+          </Stack>
+        ) : (
+          // ─── Режим редактирования ──────────────────────────────────
+          <form onSubmit={handleSubmit}>
+            <Stack>
+              <Group justify="space-between" mb="xs">
+                <Title order={4}>Редактирование профиля</Title>
+              </Group>
+
+              <TextInput label="Город" {...form.getInputProps('city')} />
+              <TextInput label="Желаемая должность" {...form.getInputProps('desired_position')} />
+              <NumberInput
+                label="Желаемая зарплата"
+                {...form.getInputProps('desired_salary')}
+                min={0}
+              />
+              <TextInput label="Телефон" {...form.getInputProps('phone')} />
+              <TextInput label="Telegram" {...form.getInputProps('telegram')} />
+              <DateInput
+                label="Дата рождения"
+                valueFormat="DD.MM.YYYY"
+                value={form.values.birth_date}
+                onChange={(value) => form.setFieldValue('birth_date', value)}
+              />
+              <Textarea
+                label="О себе"
+                minRows={3}
+                autosize
+                {...form.getInputProps('about_me')}
+              />
+
+              {updateMutation.isError && (
+                <Text c="red" size="sm">
+                  {(updateMutation.error as Error).message}
+                </Text>
+              )}
+
+              <Group>
+                <Button type="submit" loading={updateMutation.isLoading}>
+                  Сохранить
+                </Button>
+                <Button
+                  variant="subtle"
+                  color="gray"
+                  onClick={() => setIsEditing(false)}
+                  disabled={updateMutation.isLoading}
+                >
+                  Отмена
+                </Button>
+              </Group>
+            </Stack>
+          </form>
+        )}
+      </Card>
 
       <ResumeSection />
       <ExperienceList />
       <EducationList />
-      <PortfolioList /> 
+      <PortfolioList />
       <CertificateList />
       <SkillsSection />
     </>
+  );
+}
+
+function ProfileRow({
+  label,
+  value,
+}: {
+  label: string;
+  value?: string | null;
+}) {
+  if (!value) return null;
+  return (
+    <Group gap="xs">
+      <Text size="sm" c="dimmed" fw={500} w={180}>
+        {label}:
+      </Text>
+      <Text size="sm">{value}</Text>
+    </Group>
   );
 }
 
@@ -623,7 +502,6 @@ export function CandidateDashboard() {
     <Container fluid py="md">
       <Group justify="space-between" mb="md">
         <Title order={2}>Личный кабинет кандидата</Title>
-        <NotificationsBell />
       </Group>
       <Tabs value={tab} onChange={setTab}>
         <Tabs.List>

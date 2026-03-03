@@ -14,8 +14,10 @@ function CertificateCard({ cert }: { cert: Certificate }) {
   const resolveUrl = (path?: string | null) => {
     if (!path) return null;
     if (path.startsWith('http')) return path;
-    return `${API_BASE}${path.startsWith('/') ? path : `/${path}`}`;
+    const cleanPath = path.startsWith('/') ? path : `/${path}`;
+    return `${API_BASE}/uploads${cleanPath}`;
   };
+
 
   const previewUrl = resolveUrl(cert.preview_path || cert.file_path);
 

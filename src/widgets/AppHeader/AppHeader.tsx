@@ -11,18 +11,18 @@ export function AppHeader() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  const handleLogout = async () => {
+    const handleLogout = async () => {
     try {
-      await logoutRequest(); // POST /auth/logout[file:2]
+      await logoutRequest(); // POST /auth/logout
     } catch {
-      // игнорируем ошибки бэка при логауте
+      // игнорируем ошибки бэка
     } finally {
-      dispatch(clearAuth());
+      dispatch(clearAuth());        // чистит Redux стейт и localStorage
       navigate('/login', { replace: true });
     }
   };
 
-  const displayName = user?.fullname || user?.email || 'Пользователь';
+  const displayName = user?.full_name || user?.email || 'Пользователь';
 
   return (
     <Group justify="space-between" h="100%" px="md">

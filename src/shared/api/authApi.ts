@@ -1,6 +1,17 @@
 // src/shared/api/authApi.ts
 import { http } from './http';
 import type { AuthUser } from '@/app/authSlice';
+import { apiFetch, setAuthToken } from '../api';
+
+export async function logoutRequest() {
+  try {
+    await apiFetch('/auth/logout', { method: 'POST' });
+  } catch {
+    // даже если бэк вернул ошибку — всё равно чистим фронт
+  } finally {
+    setAuthToken(null); // тоже чистим через setAuthToken
+  }
+}
 
 export async function fetchCurrentUser(): Promise<AuthUser> {
   const { data } = await http.get('/users/me'); // users/me возвращает UserRead с fullname[file:2]
@@ -12,6 +23,6 @@ export async function fetchCurrentUser(): Promise<AuthUser> {
   };
 }
 
-export async function logoutRequest() {
-  await http.post('/auth/logout'); // POST /auth/logout[file:2]
-}
+
+
+
