@@ -7,6 +7,7 @@ import { CandidateDashboard } from './features/candidate/CandidateDashboard';
 import { HRDashboard } from './features/hr/HRDashboard';
 import { HrVacancyDetailsPage } from './features/hr/vacancies/HrVacancyDetailsPage';
 import { HrCandidatePage } from './features/hr/candidates/HrCandidatePage';
+import { VacancyPage } from '@/features/candidate/VacancyPage';
 import { AppHeader } from '@/widgets/AppHeader/AppHeader';
 import { useCurrentUser } from './shared/auth';
 import type { UserRole } from './shared/auth';
@@ -114,7 +115,8 @@ export default function App() {
             <Navigate to="/login" replace />
           )
         }
-/>
+      />
+      <Route path="/candidate/vacancies/:id" element={<VacancyPage />} />
 
 
 

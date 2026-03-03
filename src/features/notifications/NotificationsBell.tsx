@@ -6,7 +6,7 @@ import {
 } from '../../shared/api/candidateApi'; // путь поправь под свой
 
 export function NotificationsBell() {
-  const { data, isLoading } = useGetCandidateNotificationsQuery();
+  const { data, isLoading, error } = useGetCandidateNotificationsQuery();
   const [markRead] = useMarkNotificationAsReadMutation();
 
   const notifications = data ?? [];
@@ -58,7 +58,7 @@ export function NotificationsBell() {
                 {n.message}
               </Text>
               <Text size="xs" c="dimmed">
-                {new Date(n.created_at).toLocaleString()}
+                {new Date(n.created_at).toLocaleString('ru-RU')}
               </Text>
             </Menu.Item>
           ))}

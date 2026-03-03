@@ -1,5 +1,5 @@
-import { useQuery } from '@tanstack/react-query';
-import { apiFetch } from '../../shared/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { apiFetch, API_BASE } from '../../shared/api';
 
 export interface VacancyRead {
   id: number;
@@ -45,7 +45,6 @@ export interface RecommendedVacancy extends VacancyRead {
   match_score: number;
 }
 
-// src/features/candidate/api.ts
 export function useRecommendedVacancies(minScore: number = 0) {
   return useQuery<RecommendedVacancy[]>({
     queryKey: ['candidate', 'vacancies', 'recommended', minScore],
@@ -66,6 +65,35 @@ export function useRecommendedVacancies(minScore: number = 0) {
     },
   });
 }
+
+export interface CreateApplicationPayload {
+  vacancy_id: number;
+}
+
+export function useApplyToVacancy() {
+  const qc = useQueryClient();
+
+  return useMutation<ApplicationRead, Error, CreateApplicationPayload>({
+    mutationFn: (payload) =>
+      apiFetch<ApplicationRead>('/candidates/applications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['candidate', 'applications'] });
+    },
+  });
+}
+
+export function useCandidateVacancy(id: number) {
+  return useQuery<VacancyRead>({
+    queryKey: ['candidate', 'vacancies', id],
+    queryFn: () => apiFetch<VacancyRead>(`/candidates/vacancies/${id}`),
+  });
+}
+
+
 
 
 

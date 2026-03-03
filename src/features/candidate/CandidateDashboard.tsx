@@ -2,20 +2,21 @@
 import { useEffect, useState } from 'react';
 import {
   Tabs, Container, Stack, Title, Text, Card, Badge,
-  Group, Loader, Center, Button, Textarea, NumberInput, TextInput
+  Group, Loader, Center, Button, Textarea, NumberInput, TextInput, Anchor
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { useForm } from '@mantine/form';
-import { useCandidateVacancies, useCandidateApplications, useRecommendedVacancies } from './api';
 import type { ApplicationStatus } from './api';
 import { useCandidateProfile, useUpdateCandidateProfile } from './profileApi';
 import { PortfolioList } from './portfolio/PortfolioList';
 import { CertificateList } from './certificates/CertificateList';
 import { useResumeRecommendations, useUploadResume, useResumeStatus } from './resumeApi';
 import { useSkills, useAddSkill, useDeleteSkill } from './portfolio/skillsApi';
-import { NotificationsBell } from '@/features/notifications/NotificationsBell';
+import { useCandidateVacancies, useCandidateApplications, useRecommendedVacancies, useApplyToVacancy } from './api';
 import { ExperienceList } from './experience/ExperienceList';
 import { EducationList } from './education/EducationList';
+import { Link } from 'react-router-dom';
+
 import { API_BASE } from '@/shared/api';
 
 
@@ -23,6 +24,8 @@ import { API_BASE } from '@/shared/api';
 
 function VacanciesTab() {
   const { data, isLoading, isError, error } = useCandidateVacancies();
+  const { data: applications } = useCandidateApplications();
+  const applyMutation = useApplyToVacancy();
 
   if (isLoading) return <Center mt="xl"><Loader /></Center>;
   if (isError) return <Text c="red" mt="md">{(error as Error).message}</Text>;
@@ -30,25 +33,59 @@ function VacanciesTab() {
 
   return (
     <Stack mt="md">
-      {data.map((v) => (
-        <Card key={v.id} withBorder shadow="sm">
-          <Group justify="space-between" mb="xs">
-            <Title order={4}>{v.title}</Title>
-            <Badge color={v.is_active ? 'green' : 'gray'}>
-              {v.is_active ? 'Активна' : 'Неактивна'}
-            </Badge>
-          </Group>
-          <Text size="sm" mb="sm">{v.description}</Text>
-          <Group gap="xs">
-            {v.required_skills.map((s) => (
-              <Badge key={s} variant="light">{s}</Badge>
-            ))}
-          </Group>
-        </Card>
-      ))}
+      {data.map((v) => {
+        const app = applications?.find((a) => a.vacancy_id === v.id);
+
+        const isApplied = !!app;
+        const statusText = app ? statusLabel(app.status) : null;
+
+        return (
+          <Card key={v.id} withBorder shadow="sm">
+            <Group justify="space-between" mb="xs">
+            <Anchor
+              component={Link}
+              to={`/candidate/vacancies/${v.id}`}
+              target="_blank"
+              rel="noopener"
+              fw={500}
+            >
+              {v.title}
+            </Anchor>
+              <Badge color={v.is_active ? 'green' : 'gray'}>
+                {v.is_active ? 'Активна' : 'Неактивна'}
+              </Badge>
+            </Group>
+            <Text size="sm" mb="sm">{v.description}</Text>
+            <Group gap="xs" mb="sm">
+              {v.required_skills.map((s) => (
+                <Badge key={s} variant="light">{s}</Badge>
+              ))}
+            </Group>
+            <Group justify="space-between" align="center">
+              {isApplied && (
+                <Text size="sm" c="dimmed">
+                  Ваш отклик: {statusText}
+                </Text>
+              )}
+              <Group justify="flex-end">
+                <Button
+                  size="sm"
+                  disabled={!v.is_active || isApplied || applyMutation.isPending}
+                  loading={applyMutation.isPending}
+                  onClick={() => applyMutation.mutate({ vacancy_id: v.id })}
+                >
+                  {isApplied ? 'Уже откликнулись' : 'Откликнуться'}
+                </Button>
+              </Group>
+            </Group>
+          </Card>
+        );
+      })}
     </Stack>
   );
 }
+
+
 
 
 // ─── Рекомендованные вакансии ─────────────────────────────────────────────────
@@ -56,6 +93,8 @@ function VacanciesTab() {
 function RecommendedVacanciesTab() {
   const [minScore, setMinScore] = useState<number>(0);
   const { data, isLoading, isError, error } = useRecommendedVacancies(minScore);
+  const { data: applications } = useCandidateApplications();
+  const applyMutation = useApplyToVacancy();
 
   if (isLoading) return <Center mt="xl"><Loader /></Center>;
   if (isError) return <Text c="red" mt="md">{(error as Error).message}</Text>;
@@ -83,28 +122,62 @@ function RecommendedVacanciesTab() {
           onChange={(value) => setMinScore(Number(value) || 0)}
         />
       </Group>
-      {data.map((v) => (
-        <Card key={v.id} withBorder shadow="sm">
-          <Group justify="space-between" mb="xs">
-            <div>
-              <Title order={4}>{v.title}</Title>
-              <Text size="sm" c="dimmed">Совпадение: {v.match_score.toFixed(1)}%</Text>
-            </div>
-            <Badge color={v.is_active ? 'green' : 'gray'}>
-              {v.is_active ? 'Активна' : 'Неактивна'}
-            </Badge>
-          </Group>
-          <Text size="sm" mb="sm">{v.description}</Text>
-          <Group gap="xs">
-            {v.required_skills.map((s) => (
-              <Badge key={s} variant="light">{s}</Badge>
-            ))}
-          </Group>
-        </Card>
-      ))}
+      {data.map((v) => {
+        const app = applications?.find((a) => a.vacancy_id === v.id);
+        const isApplied = !!app;
+        const statusText = app ? statusLabel(app.status) : null;
+
+        return (
+          <Card key={v.id} withBorder shadow="sm">
+            <Group justify="space-between" mb="xs">
+              <div>
+                <Anchor
+                  component={Link}
+                  to={`/candidate/vacancies/${v.id}`}
+                  target="_blank"
+                  rel="noopener"
+                  fw={500}
+                >
+                  {v.title}
+                </Anchor>
+
+                <Text size="sm" c="dimmed">Совпадение: {v.match_score.toFixed(1)}%</Text>
+              </div>
+              <Badge color={v.is_active ? 'green' : 'gray'}>
+                {v.is_active ? 'Активна' : 'Неактивна'}
+              </Badge>
+            </Group>
+            <Text size="sm" mb="sm">{v.description}</Text>
+            <Group gap="xs" mb="sm">
+              {v.required_skills.map((s) => (
+                <Badge key={s} variant="light">{s}</Badge>
+              ))}
+            </Group>
+            <Group justify="space-between" align="center">
+              {isApplied && (
+                <Text size="sm" c="dimmed">
+                  Ваш отклик: {statusText}
+                </Text>
+              )}
+              <Group justify="flex-end">
+                <Button
+                  size="sm"
+                  disabled={!v.is_active || isApplied || applyMutation.isPending}
+                  loading={applyMutation.isPending}
+                  onClick={() => applyMutation.mutate({ vacancy_id: v.id })}
+                >
+                  {isApplied ? 'Уже откликнулись' : 'Откликнуться'}
+                </Button>
+              </Group>
+            </Group>
+          </Card>
+        );
+      })}
     </Stack>
   );
 }
+
+
 
 
 // ─── Статус заявки ────────────────────────────────────────────────────────────

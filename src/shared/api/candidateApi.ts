@@ -12,7 +12,9 @@ export const candidateApi = createApi({
   reducerPath: 'candidateApi',
   baseQuery: fetchBaseQuery({
     baseUrl: import.meta.env.VITE_API_URL,
+    credentials: 'include',
   }),
+
   tagTypes: ['CandidateNotifications'],
   endpoints: (builder) => ({
     getCandidateNotifications: builder.query<Notification[], void>({
