@@ -1,4 +1,5 @@
-import { Button, Group, Text } from '@mantine/core';
+import { ActionIcon, Button, Group, Text, Tooltip, useMantineColorScheme } from '@mantine/core';
+import { IconMoon, IconSun } from '@tabler/icons-react';
 import { useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
 import { useCurrentUser } from '@/shared/auth';
@@ -10,14 +11,15 @@ export function AppHeader() {
   const { data: user } = useCurrentUser();
   const dispatch = useDispatch();
   const navigate = useNavigate();
+  const { colorScheme, toggleColorScheme } = useMantineColorScheme();
 
-    const handleLogout = async () => {
+  const handleLogout = async () => {
     try {
-      await logoutRequest(); // POST /auth/logout
+      await logoutRequest();
     } catch {
-      // игнорируем ошибки бэка
+      // ignore
     } finally {
-      dispatch(clearAuth());        // чистит Redux стейт и localStorage
+      dispatch(clearAuth());
       navigate('/login', { replace: true });
     }
   };
@@ -26,10 +28,31 @@ export function AppHeader() {
 
   return (
     <Group justify="space-between" h="100%" px="md">
-      <Text fw={600}>TalentRadar</Text>
-      <Group gap="md">
+      <Group gap="xs">
+        <Text fw={800} size="lg" variant="gradient" gradient={{ from: 'violet', to: 'indigo', deg: 135 }}
+          style={{ letterSpacing: '-0.5px' }}
+        >
+          TalentRadar
+        </Text>
+      </Group>
+
+      <Group gap="sm">
         <NotificationsBell />
-        <Text size="sm">{displayName}</Text>
+
+        <Tooltip label={colorScheme === 'dark' ? 'Светлая тема' : 'Тёмная тема'} withArrow>
+          <ActionIcon
+            variant="subtle"
+            size="md"
+            onClick={() => toggleColorScheme()}
+            aria-label="Toggle color scheme"
+          >
+            {colorScheme === 'dark'
+              ? <IconSun size={18} />
+              : <IconMoon size={18} />}
+          </ActionIcon>
+        </Tooltip>
+
+        <Text size="sm" c="dimmed">{displayName}</Text>
         <Button variant="outline" size="xs" onClick={handleLogout}>
           Выйти
         </Button>
