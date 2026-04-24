@@ -93,7 +93,6 @@ function AISummaryBlock({ app }: { app: HRApplication }) {
         </Group>
       </Group>
 
-      {/* Состояние: анализ ещё не запущен */}
       {!hasSummary && !analyzeMutation.isPending && (
         <Alert
           mt="xs"
@@ -107,7 +106,6 @@ function AISummaryBlock({ app }: { app: HRApplication }) {
         </Alert>
       )}
 
-      {/* Идёт анализ */}
       {analyzeMutation.isPending && (
         <Group mt="xs" gap="xs">
           <Loader size="xs" color="violet" />
@@ -115,7 +113,6 @@ function AISummaryBlock({ app }: { app: HRApplication }) {
         </Group>
       )}
 
-      {/* Результат */}
       {hasSummary && (
         <Collapse in={open} mt="xs">
           <LLMSummaryCard summary={app.match_summary!} score={app.match_score} />
@@ -124,7 +121,7 @@ function AISummaryBlock({ app }: { app: HRApplication }) {
 
       {analyzeMutation.isError && (
         <Text size="xs" c="red" mt={4}>
-          {Ошибка: {(analyzeMutation.error as Error).message}}
+          {`Ошибка: ${(analyzeMutation.error as Error).message}`}
         </Text>
       )}
     </>
@@ -139,7 +136,6 @@ function ApplicationRow({ app }: { app: HRApplication }) {
     <Card withBorder p="md" radius="md" shadow="xs">
       <Group justify="space-between" align="flex-start">
         <Stack gap={4}>
-          {/* Заголовок: идентификаторы */}
           <Group gap="xs">
             <Text fw={600} size="sm">Отклик #{app.id}</Text>
             <Badge size="xs" variant="light" color="gray">
@@ -157,7 +153,6 @@ function ApplicationRow({ app }: { app: HRApplication }) {
             </Badge>
           </Group>
 
-          {/* score + этап */}
           <Group gap="xs">
             <MatchScoreBadge score={app.match_score} showAlways size="xs" />
             {app.pipeline_stage && (
@@ -177,7 +172,6 @@ function ApplicationRow({ app }: { app: HRApplication }) {
           </Text>
         </Stack>
 
-        {/* Действия */}
         <Stack gap="xs" align="flex-end">
           <Group gap="xs">
             <Button
@@ -221,7 +215,6 @@ function ApplicationRow({ app }: { app: HRApplication }) {
         </Stack>
       </Group>
 
-      {/* АI-блок — всегда виден */}
       <AISummaryBlock app={app} />
     </Card>
   );
@@ -239,7 +232,7 @@ export function ApplicationsTab() {
         <Text fw={600} size="lg">Все отклики</Text>
         {applications && (
           <Text size="sm" c="dimmed">
-            {applications.length} отклик
+            {applications.length}&nbsp;отклик
             {applications.length === 1 ? '' : applications.length >= 2 && applications.length <= 4 ? 'а' : 'ов'}
           </Text>
         )}
