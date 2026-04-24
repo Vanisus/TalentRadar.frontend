@@ -137,12 +137,21 @@ function ApplicationCard({ app }: { app: HRApplication }) {
   const updateStatus = useUpdateApplicationStatus();
   const updateHR = useUpdateApplicationHR();
 
+  const isRejected = app.status === 'rejected';
+  const isAccepted = app.status === 'accepted';
+
   const handleSetStage = (stage: string) => {
     updateHR.mutate({ id: app.id, data: { pipeline_stage: stage } });
   };
 
   return (
-    <Card withBorder p="md" radius="md" shadow="xs">
+    <Card
+      withBorder
+      p="md"
+      radius="md"
+      shadow="xs"
+      style={isRejected ? { opacity: 0.7 } : undefined}
+    >
       <Group justify="space-between" align="flex-start" mb="xs">
         <Stack gap={4}>
           <Group gap="xs">
@@ -184,13 +193,13 @@ function ApplicationCard({ app }: { app: HRApplication }) {
           <Group gap="xs">
             <Button size="xs" variant="light" color="violet"
               onClick={() => handleSetStage('screening')}
-              disabled={updateHR.isPending}
+              disabled={updateHR.isPending || isRejected || isAccepted}
             >
               Скрининг
             </Button>
             <Button size="xs" variant="light" color="blue"
               onClick={() => handleSetStage('interview')}
-              disabled={updateHR.isPending}
+              disabled={updateHR.isPending || isRejected || isAccepted}
             >
               Интервью
             </Button>
@@ -199,12 +208,14 @@ function ApplicationCard({ app }: { app: HRApplication }) {
             <Button size="xs" color="green"
               onClick={() => updateStatus.mutate({ id: app.id, status: 'accepted' })}
               loading={updateStatus.isPending}
+              disabled={updateStatus.isPending || isAccepted}
             >
               Принять
             </Button>
             <Button size="xs" color="red" variant="subtle"
               onClick={() => updateStatus.mutate({ id: app.id, status: 'rejected' })}
               loading={updateStatus.isPending}
+              disabled={updateStatus.isPending || isRejected}
             >
               Отклонить
             </Button>
