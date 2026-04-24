@@ -13,6 +13,8 @@ import {
   Collapse,
   ActionIcon,
   Tooltip,
+  Alert,
+  ThemeIcon,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {
@@ -22,6 +24,9 @@ import {
   useUpdateApplicationStatus,
   useUpdateApplicationHR,
 } from '../hrApi';
+import {
+  useLLMAnalyzeApplication,
+} from './applicationsApi';
 import { LLMSummaryCard } from '../../../shared/LLMSummaryCard';
 import { MatchScoreBadge } from '../../../shared/MatchScoreBadge';
 
@@ -39,10 +44,98 @@ const STATUS_COLORS: Record<string, string> = {
   rejected: 'red',
 };
 
+function AISummaryBlock({ app }: { app: HRApplication }) {
+  const [open, { toggle }] = useDisclosure(false);
+  const analyzeMutation = useLLMAnalyzeApplication();
+
+  const hasSummary = !!app.match_summary;
+
+  return (
+    <>
+      <Divider my="xs" />
+      <Group justify="space-between" align="center">
+        <Group gap="xs">
+          <ThemeIcon size="xs" variant="transparent" color="violet">✧</ThemeIcon>
+          <Text size="xs" fw={600} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.05em' }}>
+            Первичная информация (AI)
+          </Text>
+        </Group>
+
+        <Group gap="xs">
+          {!hasSummary && (
+            <Tooltip label="Запустить AI-анализ" withArrow>
+              <Button
+                size="xs"
+                variant="light"
+                color="violet"
+                loading={analyzeMutation.isPending}
+                onClick={() => analyzeMutation.mutate({ id: app.id })}
+              >
+                Получить
+              </Button>
+            </Tooltip>
+          )}
+          {hasSummary && (
+            <>
+              <Tooltip label="Переанализировать" withArrow>
+                <Button
+                  size="xs"
+                  variant="subtle"
+                  color="gray"
+                  loading={analyzeMutation.isPending}
+                  onClick={() => analyzeMutation.mutate({ id: app.id })}
+                >
+                  ↑ Обновить
+                </Button>
+              </Tooltip>
+              <Tooltip label={open ? 'Скрыть' : 'Показать'} withArrow>
+                <ActionIcon size="sm" variant="subtle" onClick={toggle}>
+                  {open ? '▲' : '▼'}
+                </ActionIcon>
+              </Tooltip>
+            </>
+          )}
+        </Group>
+      </Group>
+
+      {!hasSummary && !analyzeMutation.isPending && (
+        <Alert
+          mt="xs"
+          variant="light"
+          color="gray"
+          icon={<span style={{ fontSize: 14 }}>⏳</span>}
+        >
+          <Text size="xs" c="dimmed">
+            AI-анализ ещё не запущен. Нажмите «Получить», чтобы нейросеть оценила кандидата.
+          </Text>
+        </Alert>
+      )}
+
+      {analyzeMutation.isPending && (
+        <Group mt="xs" gap="xs">
+          <Loader size="xs" color="violet" />
+          <Text size="xs" c="dimmed">Анализируем кандидата…</Text>
+        </Group>
+      )}
+
+      {hasSummary && (
+        <Collapse in={open} mt="xs">
+          <LLMSummaryCard summary={app.match_summary!} score={app.match_score} />
+        </Collapse>
+      )}
+
+      {analyzeMutation.isError && (
+        <Text size="xs" c="red" mt={4}>
+          Ошибка: {(analyzeMutation.error as Error).message}
+        </Text>
+      )}
+    </>
+  );
+}
+
 function ApplicationCard({ app }: { app: HRApplication }) {
   const updateStatus = useUpdateApplicationStatus();
   const updateHR = useUpdateApplicationHR();
-  const [summaryOpen, { toggle: toggleSummary }] = useDisclosure(false);
 
   const handleSetStage = (stage: string) => {
     updateHR.mutate({ id: app.id, data: { pipeline_stage: stage } });
@@ -50,7 +143,6 @@ function ApplicationCard({ app }: { app: HRApplication }) {
 
   return (
     <Card withBorder p="md" radius="md" shadow="xs">
-      {/* Заголовок карточки */}
       <Group justify="space-between" align="flex-start" mb="xs">
         <Stack gap={4}>
           <Group gap="xs">
@@ -88,22 +180,15 @@ function ApplicationCard({ app }: { app: HRApplication }) {
           </Text>
         </Stack>
 
-        {/* Кнопки действий */}
         <Stack gap="xs" align="flex-end">
           <Group gap="xs">
-            <Button
-              size="xs"
-              variant="light"
-              color="violet"
+            <Button size="xs" variant="light" color="violet"
               onClick={() => handleSetStage('screening')}
               disabled={updateHR.isPending}
             >
               Скрининг
             </Button>
-            <Button
-              size="xs"
-              variant="light"
-              color="blue"
+            <Button size="xs" variant="light" color="blue"
               onClick={() => handleSetStage('interview')}
               disabled={updateHR.isPending}
             >
@@ -111,18 +196,13 @@ function ApplicationCard({ app }: { app: HRApplication }) {
             </Button>
           </Group>
           <Group gap="xs">
-            <Button
-              size="xs"
-              color="green"
+            <Button size="xs" color="green"
               onClick={() => updateStatus.mutate({ id: app.id, status: 'accepted' })}
               loading={updateStatus.isPending}
             >
               Принять
             </Button>
-            <Button
-              size="xs"
-              color="red"
-              variant="subtle"
+            <Button size="xs" color="red" variant="subtle"
               onClick={() => updateStatus.mutate({ id: app.id, status: 'rejected' })}
               loading={updateStatus.isPending}
             >
@@ -132,29 +212,8 @@ function ApplicationCard({ app }: { app: HRApplication }) {
         </Stack>
       </Group>
 
-      {/* LLM-анализ — раскрывающийся блок */}
-      {app.match_summary && (
-        <>
-          <Divider my="xs" />
-          <Group justify="space-between" align="center">
-            <Text size="xs" fw={500} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.05em' }}>
-              AI-анализ кандидата
-            </Text>
-            <Tooltip label={summaryOpen ? 'Скрыть' : 'Показать'} withArrow>
-              <ActionIcon
-                size="xs"
-                variant="subtle"
-                onClick={toggleSummary}
-              >
-                {summaryOpen ? '▲' : '▼'}
-              </ActionIcon>
-            </Tooltip>
-          </Group>
-          <Collapse in={summaryOpen} mt="xs">
-            <LLMSummaryCard summary={app.match_summary} score={app.match_score} />
-          </Collapse>
-        </>
-      )}
+      {/* AI-блок — всегда виден */}
+      <AISummaryBlock app={app} />
     </Card>
   );
 }
@@ -185,20 +244,20 @@ export function VacancyApplicationsSection({ vacancyId }: { vacancyId: number })
             {analysis.average_match_score != null && (
               <Stack gap={0} align="center">
                 <Text size="xl" fw={700} c="teal">{analysis.average_match_score.toFixed(0)}%</Text>
-                <Text size="xs" c="dimmed">средний score</Text>
+                <Text size="xs" c="dimmed">средний</Text>
               </Stack>
             )}
             {analysis.max_match_score != null && (
               <Stack gap={0} align="center">
                 <Text size="xl" fw={700} c="green">{analysis.max_match_score.toFixed(0)}%</Text>
-                <Text size="xs" c="dimmed">максимум</Text>
+                <Text size="xs" c="dimmed">макс</Text>
               </Stack>
             )}
           </Group>
         )}
       </Group>
 
-      {/* Фильтр по score */}
+      {/* Фильтр */}
       <Stack gap={4}>
         <Group justify="space-between">
           <Text size="sm" c="dimmed">Мин. совпадение</Text>

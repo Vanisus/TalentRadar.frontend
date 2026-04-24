@@ -11,12 +11,15 @@ import {
   Collapse,
   ActionIcon,
   Tooltip,
+  Alert,
+  ThemeIcon,
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {
   useHRApplications,
   useUpdateApplicationStatus,
   useUpdateApplicationHR,
+  useLLMAnalyzeApplication,
   type HRApplication,
 } from './applicationsApi';
 import { LLMSummaryCard } from '../../../shared/LLMSummaryCard';
@@ -36,15 +39,107 @@ const STATUS_COLORS: Record<string, string> = {
   rejected: 'red',
 };
 
+function AISummaryBlock({ app }: { app: HRApplication }) {
+  const [open, { toggle }] = useDisclosure(false);
+  const analyzeMutation = useLLMAnalyzeApplication();
+
+  const hasSummary = !!app.match_summary;
+
+  return (
+    <>
+      <Divider my="xs" />
+      <Group justify="space-between" align="center">
+        <Group gap="xs">
+          <ThemeIcon size="xs" variant="transparent" color="violet">✧</ThemeIcon>
+          <Text size="xs" fw={600} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.05em' }}>
+            Первичная информация (AI)
+          </Text>
+        </Group>
+
+        <Group gap="xs">
+          {!hasSummary && (
+            <Tooltip label="Запустить AI-анализ кандидата" withArrow>
+              <Button
+                size="xs"
+                variant="light"
+                color="violet"
+                loading={analyzeMutation.isPending}
+                onClick={() => analyzeMutation.mutate({ id: app.id })}
+              >
+                Получить
+              </Button>
+            </Tooltip>
+          )}
+          {hasSummary && (
+            <>
+              <Tooltip label="Переанализировать" withArrow>
+                <Button
+                  size="xs"
+                  variant="subtle"
+                  color="gray"
+                  loading={analyzeMutation.isPending}
+                  onClick={() => analyzeMutation.mutate({ id: app.id })}
+                >
+                  ↑ Обновить
+                </Button>
+              </Tooltip>
+              <Tooltip label={open ? 'Скрыть' : 'Показать'} withArrow>
+                <ActionIcon size="sm" variant="subtle" onClick={toggle}>
+                  {open ? '▲' : '▼'}
+                </ActionIcon>
+              </Tooltip>
+            </>
+          )}
+        </Group>
+      </Group>
+
+      {/* Состояние: анализ ещё не запущен */}
+      {!hasSummary && !analyzeMutation.isPending && (
+        <Alert
+          mt="xs"
+          variant="light"
+          color="gray"
+          icon={<span style={{ fontSize: 14 }}>⏳</span>}
+        >
+          <Text size="xs" c="dimmed">
+            AI-анализ ещё не запущен. Нажмите «Получить», чтобы нейросеть оценила кандидата.
+          </Text>
+        </Alert>
+      )}
+
+      {/* Идёт анализ */}
+      {analyzeMutation.isPending && (
+        <Group mt="xs" gap="xs">
+          <Loader size="xs" color="violet" />
+          <Text size="xs" c="dimmed">Анализируем кандидата…</Text>
+        </Group>
+      )}
+
+      {/* Результат */}
+      {hasSummary && (
+        <Collapse in={open} mt="xs">
+          <LLMSummaryCard summary={app.match_summary!} score={app.match_score} />
+        </Collapse>
+      )}
+
+      {analyzeMutation.isError && (
+        <Text size="xs" c="red" mt={4}>
+          {Ошибка: {(analyzeMutation.error as Error).message}}
+        </Text>
+      )}
+    </>
+  );
+}
+
 function ApplicationRow({ app }: { app: HRApplication }) {
   const updateStatus = useUpdateApplicationStatus();
   const updateHR = useUpdateApplicationHR();
-  const [summaryOpen, { toggle: toggleSummary }] = useDisclosure(false);
 
   return (
     <Card withBorder p="md" radius="md" shadow="xs">
       <Group justify="space-between" align="flex-start">
         <Stack gap={4}>
+          {/* Заголовок: идентификаторы */}
           <Group gap="xs">
             <Text fw={600} size="sm">Отклик #{app.id}</Text>
             <Badge size="xs" variant="light" color="gray">
@@ -62,6 +157,7 @@ function ApplicationRow({ app }: { app: HRApplication }) {
             </Badge>
           </Group>
 
+          {/* score + этап */}
           <Group gap="xs">
             <MatchScoreBadge score={app.match_score} showAlways size="xs" />
             {app.pipeline_stage && (
@@ -81,6 +177,7 @@ function ApplicationRow({ app }: { app: HRApplication }) {
           </Text>
         </Stack>
 
+        {/* Действия */}
         <Stack gap="xs" align="flex-end">
           <Group gap="xs">
             <Button
@@ -124,24 +221,8 @@ function ApplicationRow({ app }: { app: HRApplication }) {
         </Stack>
       </Group>
 
-      {app.match_summary && (
-        <>
-          <Divider my="xs" />
-          <Group justify="space-between" align="center">
-            <Text size="xs" fw={500} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.05em' }}>
-              AI-анализ
-            </Text>
-            <Tooltip label={summaryOpen ? 'Скрыть' : 'Показать'} withArrow>
-              <ActionIcon size="xs" variant="subtle" onClick={toggleSummary}>
-                {summaryOpen ? '▲' : '▼'}
-              </ActionIcon>
-            </Tooltip>
-          </Group>
-          <Collapse in={summaryOpen} mt="xs">
-            <LLMSummaryCard summary={app.match_summary} score={app.match_score} />
-          </Collapse>
-        </>
-      )}
+      {/* АI-блок — всегда виден */}
+      <AISummaryBlock app={app} />
     </Card>
   );
 }
@@ -150,24 +231,22 @@ export function ApplicationsTab() {
   const { data: applications, isLoading, isError } = useHRApplications();
 
   if (isLoading) return <Center mt="xl"><Loader /></Center>;
-
-  if (isError) {
-    return <Text mt="md" c="red">Ошибка загрузки откликов</Text>;
-  }
+  if (isError) return <Text mt="md" c="red">Ошибка загрузки откликов</Text>;
 
   return (
     <Stack mt="md">
       <Group justify="space-between">
         <Text fw={600} size="lg">Все отклики</Text>
         {applications && (
-          <Text size="sm" c="dimmed">{applications.length} отклик{applications.length === 1 ? '' : applications.length < 5 ? 'а' : 'ов'}</Text>
+          <Text size="sm" c="dimmed">
+            {applications.length} отклик
+            {applications.length === 1 ? '' : applications.length >= 2 && applications.length <= 4 ? 'а' : 'ов'}
+          </Text>
         )}
       </Group>
 
       {!applications?.length && (
-        <Text size="sm" c="dimmed" ta="center" py="xl">
-          Откликов пока нет.
-        </Text>
+        <Text size="sm" c="dimmed" ta="center" py="xl">Откликов пока нет.</Text>
       )}
 
       {applications?.map((app) => (
