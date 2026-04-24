@@ -1,7 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiFetch, API_BASE } from '../../shared/api';
+import { apiFetch } from '../../shared/api';
 
-export interface VacancyRead {
+// Все вакансии теперь возвращают match_score (быстрый, без LLM)
+export interface VacancyWithMatchScore {
   id: number;
   title: string;
   description: string;
@@ -10,12 +11,16 @@ export interface VacancyRead {
   created_at: string;
   updated_at: string;
   hr_id: number;
+  match_score: number;
 }
 
+/** @deprecated use VacancyWithMatchScore */
+export type VacancyRead = VacancyWithMatchScore;
+
 export function useCandidateVacancies() {
-  return useQuery<VacancyRead[]>({
+  return useQuery<VacancyWithMatchScore[]>({
     queryKey: ['candidate', 'vacancies'],
-    queryFn: () => apiFetch<VacancyRead[]>('/candidates/vacancies'),
+    queryFn: () => apiFetch<VacancyWithMatchScore[]>('/candidates/vacancies'),
   });
 }
 
@@ -41,11 +46,10 @@ export function useCandidateApplications() {
   });
 }
 
-export interface RecommendedVacancy extends VacancyRead {
-  match_score: number;
-}
+/** Рекомендованные — это те же вакансии, но отфильтрованные по score. */
+export type RecommendedVacancy = VacancyWithMatchScore;
 
-export function useRecommendedVacancies(minScore: number = 0) {
+export function useRecommendedVacancies(minScore: number = 50) {
   return useQuery<RecommendedVacancy[]>({
     queryKey: ['candidate', 'vacancies', 'recommended', minScore],
     queryFn: async () => {
@@ -54,10 +58,7 @@ export function useRecommendedVacancies(minScore: number = 0) {
           `/candidates/vacancies/recommended?min_score=${minScore}`,
         );
       } catch (e: any) {
-        // apiFetch сейчас кидает Error('HTTP 400') — можно его доработать,
-        // но пока проще сделать спец-обработку по тексту
         if (e instanceof Error && e.message.startsWith('HTTP 400')) {
-          // считаем, что рекомендаций нет (например, нет резюме)
           return [];
         }
         throw e;
@@ -87,13 +88,8 @@ export function useApplyToVacancy() {
 }
 
 export function useCandidateVacancy(id: number) {
-  return useQuery<VacancyRead>({
+  return useQuery<VacancyWithMatchScore>({
     queryKey: ['candidate', 'vacancies', id],
-    queryFn: () => apiFetch<VacancyRead>(`/candidates/vacancies/${id}`),
+    queryFn: () => apiFetch<VacancyWithMatchScore>(`/candidates/vacancies/${id}`),
   });
 }
-
-
-
-
-

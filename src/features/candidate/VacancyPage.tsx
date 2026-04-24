@@ -1,11 +1,18 @@
 import { useParams } from 'react-router-dom';
-import { Container, Title, Text, Card, Badge, Group, Loader, Center, Stack } from '@mantine/core';
-import { useCandidateVacancy } from './api';
+import {
+  Container, Title, Text, Card, Badge, Group, Loader, Center,
+  Stack, Button, Divider, ThemeIcon, Box,
+} from '@mantine/core';
+import { useCandidateVacancy, useCandidateApplications, useApplyToVacancy } from './api';
+import { MatchScoreBadge } from '../../shared/MatchScoreBadge';
 
 export function VacancyPage() {
   const params = useParams();
   const id = Number(params.id);
+
   const { data, isLoading, isError, error } = useCandidateVacancy(id);
+  const { data: applications } = useCandidateApplications();
+  const applyMutation = useApplyToVacancy();
 
   if (isNaN(id)) {
     return <Text mt="md">Некорректный идентификатор вакансии.</Text>;
@@ -28,33 +35,64 @@ export function VacancyPage() {
   }
 
   const v = data;
+  const app = applications?.find((a) => a.vacancy_id === v.id);
+  const isApplied = !!app;
+
+  const statusColors: Record<string, string> = {
+    new: 'blue',
+    under_review: 'yellow',
+    accepted: 'green',
+    rejected: 'red',
+  };
+  const statusLabels: Record<string, string> = {
+    new: 'На рассмотрении',
+    under_review: 'В обработке',
+    accepted: 'Принято',
+    rejected: 'Отклонено',
+  };
 
   return (
-    <Container size="md" py="md">
-      <Card withBorder shadow="sm">
-        <Group justify="space-between" mb="md">
-          <Title order={2}>{v.title}</Title>
-          <Badge color={v.is_active ? 'green' : 'gray'}>
-            {v.is_active ? 'Активна' : 'Неактивна'}
-          </Badge>
+    <Container size="md" py="xl">
+      <Card withBorder shadow="md" radius="lg" p="xl">
+        {/* Заголовок */}
+        <Group justify="space-between" mb="md" align="flex-start">
+          <Box style={{ flex: 1 }}>
+            <Title order={2} mb={6}>{v.title}</Title>
+            <Group gap="xs">
+              <Badge
+                color={v.is_active ? 'green' : 'gray'}
+                variant="light"
+                size="sm"
+              >
+                {v.is_active ? '● Активна' : '○ Закрыта'}
+              </Badge>
+              <MatchScoreBadge score={v.match_score} size="sm" />
+            </Group>
+          </Box>
         </Group>
 
-        <Stack gap="sm">
-          <Text size="sm" c="dimmed">
-            ID вакансии: {v.id}
-          </Text>
+        <Divider mb="md" />
 
+        {/* Описание */}
+        <Stack gap="lg">
           <div>
-            <Text fw={500} mb={4}>Описание</Text>
-            <Text size="sm">{v.description}</Text>
+            <Text fw={600} size="sm" c="dimmed" mb={6} tt="uppercase" style={{ letterSpacing: '0.05em' }}>
+              Описание
+            </Text>
+            <Text size="sm" style={{ lineHeight: 1.7, whiteSpace: 'pre-wrap' }}>
+              {v.description}
+            </Text>
           </div>
 
+          {/* Навыки */}
           {v.required_skills.length > 0 && (
             <div>
-              <Text fw={500} mb={4}>Требуемые навыки</Text>
+              <Text fw={600} size="sm" c="dimmed" mb={8} tt="uppercase" style={{ letterSpacing: '0.05em' }}>
+                Требуемые навыки
+              </Text>
               <Group gap="xs">
                 {v.required_skills.map((s) => (
-                  <Badge key={s} variant="light">
+                  <Badge key={s} variant="light" size="md">
                     {s}
                   </Badge>
                 ))}
@@ -62,9 +100,36 @@ export function VacancyPage() {
             </div>
           )}
 
-          <Text size="xs" c="dimmed" mt="md">
-            Создана: {new Date(v.created_at).toLocaleString('ru-RU')}
-          </Text>
+          <Divider />
+
+          {/* Кнопка отклика */}
+          <Group justify="space-between" align="center">
+            <Text size="xs" c="dimmed">
+              Создана: {new Date(v.created_at).toLocaleDateString('ru-RU', {
+                day: 'numeric', month: 'long', year: 'numeric',
+              })}
+            </Text>
+
+            {isApplied ? (
+              <Group gap="xs">
+                <ThemeIcon color={statusColors[app.status] ?? 'gray'} variant="light" size="sm" radius="xl">
+                  ✓
+                </ThemeIcon>
+                <Text size="sm" c="dimmed">
+                  {statusLabels[app.status] ?? app.status}
+                </Text>
+              </Group>
+            ) : (
+              <Button
+                disabled={!v.is_active || applyMutation.isPending}
+                loading={applyMutation.isPending}
+                onClick={() => applyMutation.mutate({ vacancy_id: v.id })}
+                radius="md"
+              >
+                Откликнуться
+              </Button>
+            )}
+          </Group>
         </Stack>
       </Card>
     </Container>

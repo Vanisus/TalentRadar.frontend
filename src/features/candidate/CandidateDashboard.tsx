@@ -12,13 +12,33 @@ import { PortfolioList } from './portfolio/PortfolioList';
 import { CertificateList } from './certificates/CertificateList';
 import { useResumeRecommendations, useUploadResume, useResumeStatus } from './resumeApi';
 import { useSkills, useAddSkill, useDeleteSkill } from './portfolio/skillsApi';
-import { useCandidateVacancies, useCandidateApplications, useRecommendedVacancies, useApplyToVacancy } from './api';
+import { useCandidateVacancies, useCandidateApplications, useApplyToVacancy } from './api';
 import { ExperienceList } from './experience/ExperienceList';
 import { EducationList } from './education/EducationList';
 import { Link } from 'react-router-dom';
+import { MatchScoreBadge } from '../../shared/MatchScoreBadge';
 
-import { API_BASE } from '@/shared/api';
+// ─── Статус заявки ────────────────────────────────────────────────────────────
 
+function statusLabel(status: ApplicationStatus) {
+  switch (status) {
+    case 'new': return 'На рассмотрении';
+    case 'under_review': return 'В обработке';
+    case 'accepted': return 'Принято';
+    case 'rejected': return 'Отклонено';
+    default: return status;
+  }
+}
+
+function statusColor(status: ApplicationStatus) {
+  switch (status) {
+    case 'new': return 'blue';
+    case 'under_review': return 'yellow';
+    case 'accepted': return 'green';
+    case 'rejected': return 'red';
+    default: return 'gray';
+  }
+}
 
 // ─── Вакансии ────────────────────────────────────────────────────────────────
 
@@ -29,197 +49,123 @@ function VacanciesTab() {
 
   if (isLoading) return <Center mt="xl"><Loader /></Center>;
   if (isError) return <Text c="red" mt="md">{(error as Error).message}</Text>;
-  if (!data || data.length === 0) return <Text mt="md">Пока нет доступных вакансий.</Text>;
+  if (!data || data.length === 0) return <Text mt="md" c="dimmed">Пока нет доступных вакансий.</Text>;
 
   return (
     <Stack mt="md">
       {data.map((v) => {
         const app = applications?.find((a) => a.vacancy_id === v.id);
-
         const isApplied = !!app;
-        const statusText = app ? statusLabel(app.status) : null;
 
         return (
-          <Card key={v.id} withBorder shadow="sm">
-            <Group justify="space-between" mb="xs">
-            <Anchor
-              component={Link}
-              to={`/candidate/vacancies/${v.id}`}
-              target="_blank"
-              rel="noopener"
-              fw={500}
-            >
-              {v.title}
-            </Anchor>
-              <Badge color={v.is_active ? 'green' : 'gray'}>
-                {v.is_active ? 'Активна' : 'Неактивна'}
-              </Badge>
-            </Group>
-            <Text size="sm" mb="sm">{v.description}</Text>
-            <Group gap="xs" mb="sm">
-              {v.required_skills.map((s) => (
-                <Badge key={s} variant="light">{s}</Badge>
-              ))}
-            </Group>
-            <Group justify="space-between" align="center">
-              {isApplied && (
-                <Text size="sm" c="dimmed">
-                  Ваш отклик: {statusText}
-                </Text>
-              )}
-              <Group justify="flex-end">
-                <Button
-                  size="sm"
-                  disabled={!v.is_active || isApplied || applyMutation.isPending}
-                  loading={applyMutation.isPending}
-                  onClick={() => applyMutation.mutate({ vacancy_id: v.id })}
-                >
-                  {isApplied ? 'Уже откликнулись' : 'Откликнуться'}
-                </Button>
-              </Group>
-            </Group>
-          </Card>
-        );
-      })}
-    </Stack>
-  );
-}
-
-
-
-
-// ─── Рекомендованные вакансии ─────────────────────────────────────────────────
-
-function RecommendedVacanciesTab() {
-  const [minScore, setMinScore] = useState<number>(0);
-  const { data, isLoading, isError, error } = useRecommendedVacancies(minScore);
-  const { data: applications } = useCandidateApplications();
-  const applyMutation = useApplyToVacancy();
-
-  if (isLoading) return <Center mt="xl"><Loader /></Center>;
-  if (isError) return <Text c="red" mt="md">{(error as Error).message}</Text>;
-
-  if (!data || data.length === 0) {
-    return (
-      <Stack mt="md">
-        <Text>Пока нет рекомендованных вакансий.</Text>
-        <Text size="sm" c="dimmed">
-          Загрузите резюме и заполните профиль, чтобы мы могли подобрать подходящие вакансии.
-        </Text>
-      </Stack>
-    );
-  }
-
-  return (
-    <Stack mt="md">
-      <Group align="flex-end">
-        <NumberInput
-          label="Минимальный match-score"
-          min={0}
-          max={100}
-          step={5}
-          value={minScore}
-          onChange={(value) => setMinScore(Number(value) || 0)}
-        />
-      </Group>
-      {data.map((v) => {
-        const app = applications?.find((a) => a.vacancy_id === v.id);
-        const isApplied = !!app;
-        const statusText = app ? statusLabel(app.status) : null;
-
-        return (
-          <Card key={v.id} withBorder shadow="sm">
-            <Group justify="space-between" mb="xs">
-              <div>
+          <Card key={v.id} withBorder shadow="sm" radius="md" p="md">
+            <Group justify="space-between" mb={6} align="flex-start">
+              <Stack gap={4} style={{ flex: 1 }}>
                 <Anchor
                   component={Link}
                   to={`/candidate/vacancies/${v.id}`}
-                  target="_blank"
-                  rel="noopener"
-                  fw={500}
+                  fw={600}
+                  size="sm"
                 >
                   {v.title}
                 </Anchor>
+                <Group gap="xs">
+                  <Badge color={v.is_active ? 'green' : 'gray'} size="xs" variant="light">
+                    {v.is_active ? 'Активна' : 'Неактивна'}
+                  </Badge>
+                  {/* match_score показываем только если >= 50% и кандидат ещё не откликнулся */}
+                  {!isApplied && <MatchScoreBadge score={v.match_score} size="xs" />}
+                </Group>
+              </Stack>
 
-                <Text size="sm" c="dimmed">Совпадение: {v.match_score.toFixed(1)}%</Text>
-              </div>
-              <Badge color={v.is_active ? 'green' : 'gray'}>
-                {v.is_active ? 'Активна' : 'Неактивна'}
-              </Badge>
-            </Group>
-            <Text size="sm" mb="sm">{v.description}</Text>
-            <Group gap="xs" mb="sm">
-              {v.required_skills.map((s) => (
-                <Badge key={s} variant="light">{s}</Badge>
-              ))}
-            </Group>
-            <Group justify="space-between" align="center">
-              {isApplied && (
-                <Text size="sm" c="dimmed">
-                  Ваш отклик: {statusText}
-                </Text>
-              )}
-              <Group justify="flex-end">
+              {isApplied ? (
+                <Badge color={statusColor(app.status)} variant="light" size="sm">
+                  {statusLabel(app.status)}
+                </Badge>
+              ) : (
                 <Button
-                  size="sm"
-                  disabled={!v.is_active || isApplied || applyMutation.isPending}
+                  size="xs"
+                  variant="light"
+                  disabled={!v.is_active || applyMutation.isPending}
                   loading={applyMutation.isPending}
                   onClick={() => applyMutation.mutate({ vacancy_id: v.id })}
                 >
-                  {isApplied ? 'Уже откликнулись' : 'Откликнуться'}
+                  Откликнуться
                 </Button>
-              </Group>
+              )}
             </Group>
+
+            <Text size="xs" c="dimmed" mb={6} lineClamp={2}>
+              {v.description}
+            </Text>
+
+            {v.required_skills.length > 0 && (
+              <Group gap={4}>
+                {v.required_skills.slice(0, 6).map((s) => (
+                  <Badge key={s} variant="outline" size="xs" color="gray">
+                    {s}
+                  </Badge>
+                ))}
+                {v.required_skills.length > 6 && (
+                  <Text size="xs" c="dimmed">+{v.required_skills.length - 6}</Text>
+                )}
+              </Group>
+            )}
           </Card>
         );
       })}
     </Stack>
   );
-}
-
-
-
-
-// ─── Статус заявки ────────────────────────────────────────────────────────────
-
-function statusLabel(status: ApplicationStatus) {
-  switch (status) {
-    case 'new': return 'Новая';
-    case 'under_review': return 'В рассмотрении';
-    case 'accepted': return 'Принята';
-    case 'rejected': return 'Отклонена';
-    default: return status;
-  }
 }
 
 
 // ─── Мои отклики ─────────────────────────────────────────────────────────────
 
 function ApplicationsTab() {
-  const { data, isLoading, isError, error } = useCandidateApplications();
+  const { data: applications } = useCandidateApplications();
+  const { data: vacancies } = useCandidateVacancies();
+
+  const isLoading = !applications && !vacancies;
 
   if (isLoading) return <Center mt="xl"><Loader /></Center>;
-  if (isError) return <Text c="red" mt="md">{(error as Error).message}</Text>;
-  if (!data || data.length === 0) return <Text mt="md">У вас пока нет заявок.</Text>;
+  if (!applications || applications.length === 0) {
+    return (
+      <Stack mt="md" align="center" py="xl">
+        <Text c="dimmed">Вы ещё не откликались ни на одну вакансию.</Text>
+      </Stack>
+    );
+  }
 
   return (
     <Stack mt="md">
-      {data.map((app) => (
-        <Card key={app.id} withBorder shadow="sm">
-          <Group justify="space-between" mb="xs">
-            <Text fw={500}>Заявка #{app.id}</Text>
-            <Badge>{statusLabel(app.status)}</Badge>
-          </Group>
-          <Text size="sm" mb="xs">Vacancy ID: {app.vacancy_id}</Text>
-          <Text size="sm">Match score: {app.match_score.toFixed(1)}%</Text>
-          {app.pipeline_stage && (
-            <Text size="sm" mt={4}>Этап: {app.pipeline_stage}</Text>
-          )}
-          {app.rating != null && (
-            <Text size="sm" mt={4}>Оценка HR: {app.rating}/5</Text>
-          )}
-        </Card>
-      ))}
+      {applications.map((app) => {
+        const vacancy = vacancies?.find((v) => v.id === app.vacancy_id);
+        return (
+          <Card key={app.id} withBorder shadow="sm" radius="md" p="md">
+            <Group justify="space-between" align="flex-start">
+              <Stack gap={4}>
+                <Text fw={600} size="sm">
+                  {vacancy?.title ?? `Вакансия #${app.vacancy_id}`}
+                </Text>
+                <Text size="xs" c="dimmed">
+                  Отклик от {new Date(app.created_at).toLocaleDateString('ru-RU', {
+                    day: 'numeric', month: 'long', year: 'numeric',
+                  })}
+                </Text>
+                {app.pipeline_stage && (
+                  <Text size="xs" c="dimmed">Этап: {app.pipeline_stage}</Text>
+                )}
+                {app.rating != null && (
+                  <Text size="xs" c="dimmed">Оценка HR: {'★'.repeat(app.rating)}{'☆'.repeat(5 - app.rating)}</Text>
+                )}
+              </Stack>
+              <Badge color={statusColor(app.status)} variant="light" size="sm">
+                {statusLabel(app.status)}
+              </Badge>
+            </Group>
+          </Card>
+        );
+      })}
     </Stack>
   );
 }
@@ -246,7 +192,7 @@ function SkillsSection() {
       {isLoading ? (
         <Loader size="sm" />
       ) : !data || data.length === 0 ? (
-        <Text size="sm">Навыки ещё не добавлены.</Text>
+        <Text size="sm" c="dimmed">Навыки ещё не добавлены.</Text>
       ) : (
         <Group gap="xs">
           {data.map((skill) => (
@@ -306,7 +252,6 @@ function ResumeSection() {
     <Stack mt="xl">
       <Title order={4}>Резюме</Title>
 
-      {/* Статус резюме */}
       <Card withBorder p="sm" radius="md">
         {status?.has_resume_file ? (
           <Group justify="space-between" align="center">
@@ -314,16 +259,12 @@ function ResumeSection() {
               <Badge color="green">Резюме загружено</Badge>
             </Group>
             {!isEditing ? (
-              <Button
-                size="xs"
-                variant="subtle"
-                onClick={() => setIsEditing(true)}
-              >
-                Редактировать
+              <Button size="xs" variant="subtle" onClick={() => setIsEditing(true)}>
+                Обновить
               </Button>
             ) : (
               <Group gap="xs">
-                <Text size="sm" c="dimmed">Хотите обновить резюме?</Text>
+                <Text size="sm" c="dimmed">Выберите новый файл:</Text>
                 <Button
                   size="xs"
                   variant="filled"
@@ -352,7 +293,10 @@ function ResumeSection() {
           </Group>
         ) : (
           <Group justify="space-between" align="center">
-            <Badge color="gray">Резюме не загружено</Badge>
+            <Group gap="xs">
+              <Badge color="orange" variant="light">Резюме не загружено</Badge>
+              <Text size="xs" c="dimmed">Загрузите резюме, чтобы получать подбор вакансий</Text>
+            </Group>
             <Button
               size="xs"
               loading={uploadMutation.isPending}
@@ -377,14 +321,13 @@ function ResumeSection() {
         )}
       </Card>
 
-      {/* Рекомендации */}
       <Title order={5} mt="lg">Рекомендации по резюме</Title>
       {isLoading ? (
         <Loader size="sm" />
       ) : isError ? (
         <Text c="red" size="sm">{(error as Error).message}</Text>
       ) : !data || data.length === 0 ? (
-        <Text size="sm">Пока нет рекомендаций. Загрузите резюме и заполните профиль.</Text>
+        <Text size="sm" c="dimmed">Пока нет рекомендаций. Загрузите резюме.</Text>
       ) : (
         <Stack>
           {data.map((rec, index) => (
@@ -451,7 +394,6 @@ function ProfileTab() {
     <>
       <Card withBorder p="md" radius="md" mt="md" maw={600}>
         {!isEditing ? (
-          // ─── Режим просмотра ───────────────────────────────────────
           <Stack gap="xs">
             <Group justify="space-between" mb="xs">
               <Title order={4}>Основная информация</Title>
@@ -464,7 +406,7 @@ function ProfileTab() {
             <ProfileRow label="Желаемая должность" value={data?.desired_position} />
             <ProfileRow
               label="Желаемая зарплата"
-              value={data?.desired_salary ? `${data.desired_salary} ₽` : undefined}
+              value={data?.desired_salary ? `${data.desired_salary.toLocaleString('ru-RU')} ₽` : undefined}
             />
             <ProfileRow label="Телефон" value={data?.phone} />
             <ProfileRow label="Telegram" value={data?.telegram} />
@@ -484,7 +426,6 @@ function ProfileTab() {
             )}
           </Stack>
         ) : (
-          // ─── Режим редактирования ──────────────────────────────────
           <form onSubmit={handleSubmit}>
             <Stack>
               <Group justify="space-between" mb="xs">
@@ -520,14 +461,14 @@ function ProfileTab() {
               )}
 
               <Group>
-                <Button type="submit" loading={updateMutation.isLoading}>
+                <Button type="submit" loading={updateMutation.isPending}>
                   Сохранить
                 </Button>
                 <Button
                   variant="subtle"
                   color="gray"
                   onClick={() => setIsEditing(false)}
-                  disabled={updateMutation.isLoading}
+                  disabled={updateMutation.isPending}
                 >
                   Отмена
                 </Button>
@@ -574,21 +515,17 @@ export function CandidateDashboard() {
   return (
     <Container fluid py="md">
       <Group justify="space-between" mb="md">
-        <Title order={2}>Личный кабинет кандидата</Title>
+        <Title order={2}>Личный кабинет</Title>
       </Group>
       <Tabs value={tab} onChange={setTab}>
         <Tabs.List>
           <Tabs.Tab value="vacancies">Вакансии</Tabs.Tab>
-          <Tabs.Tab value="recommended">Рекомендованные</Tabs.Tab>
           <Tabs.Tab value="applications">Мои отклики</Tabs.Tab>
           <Tabs.Tab value="profile">Профиль</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel value="vacancies">
           <VacanciesTab />
-        </Tabs.Panel>
-        <Tabs.Panel value="recommended">
-          <RecommendedVacanciesTab />
         </Tabs.Panel>
         <Tabs.Panel value="applications">
           <ApplicationsTab />

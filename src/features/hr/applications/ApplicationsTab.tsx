@@ -7,58 +7,75 @@ import {
   Button,
   Loader,
   Center,
+  Divider,
+  Collapse,
+  ActionIcon,
+  Tooltip,
 } from '@mantine/core';
+import { useDisclosure } from '@mantine/hooks';
 import {
   useHRApplications,
   useUpdateApplicationStatus,
   useUpdateApplicationHR,
   type HRApplication,
 } from './applicationsApi';
+import { LLMSummaryCard } from '../../../shared/LLMSummaryCard';
+import { MatchScoreBadge } from '../../../shared/MatchScoreBadge';
+
+const STATUS_LABELS: Record<string, string> = {
+  new: 'Новый',
+  under_review: 'На рассмотрении',
+  accepted: 'Принят',
+  rejected: 'Отклонён',
+};
+
+const STATUS_COLORS: Record<string, string> = {
+  new: 'blue',
+  under_review: 'yellow',
+  accepted: 'green',
+  rejected: 'red',
+};
 
 function ApplicationRow({ app }: { app: HRApplication }) {
   const updateStatus = useUpdateApplicationStatus();
   const updateHR = useUpdateApplicationHR();
-
-  const handleAccept = () => {
-    updateStatus.mutate({ id: app.id, status: 'accepted' });
-  };
-
-  const handleReject = () => {
-    updateStatus.mutate({ id: app.id, status: 'rejected' });
-  };
-
-  const handleSetStage = (stage: string) => {
-    updateHR.mutate({ id: app.id, data: { pipeline_stage: stage } });
-  };
+  const [summaryOpen, { toggle: toggleSummary }] = useDisclosure(false);
 
   return (
-    <Card withBorder p="md" radius="md">
+    <Card withBorder p="md" radius="md" shadow="xs">
       <Group justify="space-between" align="flex-start">
         <Stack gap={4}>
           <Group gap="xs">
-            <Text fw={500}>Отклик #{app.id}</Text>
-            <Badge size="sm" variant="light">
+            <Text fw={600} size="sm">Отклик #{app.id}</Text>
+            <Badge size="xs" variant="light" color="gray">
               Вакансия #{app.vacancy_id}
             </Badge>
-            <Badge size="sm" variant="light">
+            <Badge size="xs" variant="light" color="gray">
               Кандидат #{app.candidate_id}
             </Badge>
+            <Badge
+              size="xs"
+              variant="light"
+              color={STATUS_COLORS[app.status] ?? 'gray'}
+            >
+              {STATUS_LABELS[app.status] ?? app.status}
+            </Badge>
           </Group>
-          <Text size="sm">Match score: {app.match_score.toFixed(1)}%</Text>
-          <Text size="sm">Статус: {app.status}</Text>
-          {app.pipeline_stage && (
-            <Text size="sm" c="dimmed">
-              Этап: {app.pipeline_stage}
-            </Text>
-          )}
-          {app.rating != null && (
-            <Text size="sm">Оценка: {app.rating}/5</Text>
-          )}
-          {app.match_summary && (
-            <Text size="sm" c="dimmed">
-              {app.match_summary}
-            </Text>
-          )}
+
+          <Group gap="xs">
+            <MatchScoreBadge score={app.match_score} showAlways size="xs" />
+            {app.pipeline_stage && (
+              <Badge size="xs" variant="dot" color="violet">
+                {app.pipeline_stage}
+              </Badge>
+            )}
+            {app.rating != null && (
+              <Text size="xs" c="dimmed">
+                {'★'.repeat(app.rating)}{'☆'.repeat(5 - app.rating)}
+              </Text>
+            )}
+          </Group>
+
           <Text size="xs" c="dimmed">
             {new Date(app.created_at).toLocaleString('ru-RU')}
           </Text>
@@ -69,7 +86,8 @@ function ApplicationRow({ app }: { app: HRApplication }) {
             <Button
               size="xs"
               variant="light"
-              onClick={() => handleSetStage('screening')}
+              color="violet"
+              onClick={() => updateHR.mutate({ id: app.id, data: { pipeline_stage: 'screening' } })}
               disabled={updateHR.isPending}
             >
               Скрининг
@@ -77,7 +95,8 @@ function ApplicationRow({ app }: { app: HRApplication }) {
             <Button
               size="xs"
               variant="light"
-              onClick={() => handleSetStage('interview')}
+              color="blue"
+              onClick={() => updateHR.mutate({ id: app.id, data: { pipeline_stage: 'interview' } })}
               disabled={updateHR.isPending}
             >
               Интервью
@@ -87,7 +106,7 @@ function ApplicationRow({ app }: { app: HRApplication }) {
             <Button
               size="xs"
               color="green"
-              onClick={handleAccept}
+              onClick={() => updateStatus.mutate({ id: app.id, status: 'accepted' })}
               loading={updateStatus.isPending}
             >
               Принять
@@ -96,7 +115,7 @@ function ApplicationRow({ app }: { app: HRApplication }) {
               size="xs"
               color="red"
               variant="subtle"
-              onClick={handleReject}
+              onClick={() => updateStatus.mutate({ id: app.id, status: 'rejected' })}
               loading={updateStatus.isPending}
             >
               Отклонить
@@ -104,6 +123,25 @@ function ApplicationRow({ app }: { app: HRApplication }) {
           </Group>
         </Stack>
       </Group>
+
+      {app.match_summary && (
+        <>
+          <Divider my="xs" />
+          <Group justify="space-between" align="center">
+            <Text size="xs" fw={500} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.05em' }}>
+              AI-анализ
+            </Text>
+            <Tooltip label={summaryOpen ? 'Скрыть' : 'Показать'} withArrow>
+              <ActionIcon size="xs" variant="subtle" onClick={toggleSummary}>
+                {summaryOpen ? '▲' : '▼'}
+              </ActionIcon>
+            </Tooltip>
+          </Group>
+          <Collapse in={summaryOpen} mt="xs">
+            <LLMSummaryCard summary={app.match_summary} score={app.match_score} />
+          </Collapse>
+        </>
+      )}
     </Card>
   );
 }
@@ -111,30 +149,23 @@ function ApplicationRow({ app }: { app: HRApplication }) {
 export function ApplicationsTab() {
   const { data: applications, isLoading, isError } = useHRApplications();
 
-  if (isLoading) {
-    return (
-      <Center mt="xl">
-        <Loader />
-      </Center>
-    );
-  }
+  if (isLoading) return <Center mt="xl"><Loader /></Center>;
 
   if (isError) {
-    return (
-      <Text mt="md" c="red">
-        Ошибка загрузки откликов
-      </Text>
-    );
+    return <Text mt="md" c="red">Ошибка загрузки откликов</Text>;
   }
 
   return (
     <Stack mt="md">
-      <Text fw={600} size="lg">
-        Отклики
-      </Text>
+      <Group justify="space-between">
+        <Text fw={600} size="lg">Все отклики</Text>
+        {applications && (
+          <Text size="sm" c="dimmed">{applications.length} отклик{applications.length === 1 ? '' : applications.length < 5 ? 'а' : 'ов'}</Text>
+        )}
+      </Group>
 
       {!applications?.length && (
-        <Text size="sm" c="dimmed">
+        <Text size="sm" c="dimmed" ta="center" py="xl">
           Откликов пока нет.
         </Text>
       )}
