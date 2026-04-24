@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiFetch } from '../../../shared/api';
+import { apiFetch, getAuthToken } from '../../../shared/api';
 
 export interface WorkExperienceRead {
   id: number;
@@ -23,6 +23,7 @@ export interface WorkExperienceCreate {
 export function useExperiences() {
   return useQuery<WorkExperienceRead[]>({
     queryKey: ['candidate', 'profile', 'experiences'],
+    enabled: !!getAuthToken(),
     queryFn: () =>
       apiFetch<WorkExperienceRead[]>('/candidates/profile/experiences'),
   });
@@ -73,4 +74,3 @@ export function useDeleteExperience() {
     },
   });
 }
-

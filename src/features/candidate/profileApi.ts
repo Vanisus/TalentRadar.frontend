@@ -1,6 +1,6 @@
 // src/features/candidate/profileApi.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiFetch } from '../../shared/api';
+import { apiFetch, getAuthToken } from '../../shared/api';
 
 export interface CandidateProfileRead {
   id: number;
@@ -29,6 +29,7 @@ export interface CandidateProfileUpdate {
 export function useCandidateProfile() {
   return useQuery<CandidateProfileRead>({
     queryKey: ['candidate', 'profile'],
+    enabled: !!getAuthToken(),
     queryFn: () => apiFetch<CandidateProfileRead>('/candidates/profile'),
   });
 }

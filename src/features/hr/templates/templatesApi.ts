@@ -1,6 +1,6 @@
 // src/features/hr/templates/templatesApi.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiFetch } from '@/shared/api';
+import { apiFetch, getAuthToken } from '@/shared/api';
 import {
   type HRVacancy,
   type HRVacancyTemplate,
@@ -14,6 +14,7 @@ import {
 export function useHRTemplates() {
   return useQuery<HRVacancyTemplate[]>({
     queryKey: ['hr', 'templates'],
+    enabled: !!getAuthToken(),
     queryFn: () => apiFetch<HRVacancyTemplate[]>('/hr/templates'),
   });
 }

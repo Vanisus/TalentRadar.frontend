@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiFetch } from '../../../shared/api';
+import { apiFetch, getAuthToken } from '../../../shared/api';
 
 export interface PortfolioItem {
   id: number;
@@ -19,6 +19,7 @@ export interface PortfolioItemCreate {
 export function usePortfolioItems() {
   return useQuery<PortfolioItem[]>({
     queryKey: ['candidate', 'portfolio'],
+    enabled: !!getAuthToken(),
     queryFn: () => apiFetch<PortfolioItem[]>('/candidates/profile/portfolio'),
   });
 }

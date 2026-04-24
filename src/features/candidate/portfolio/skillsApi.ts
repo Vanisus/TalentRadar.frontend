@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiFetch } from '@/shared/api';
+import { apiFetch, getAuthToken } from '@/shared/api';
 
 export interface CandidateSkill {
   id: number;
@@ -15,6 +15,7 @@ export interface CandidateSkillCreate {
 export function useSkills() {
   return useQuery<CandidateSkill[]>({
     queryKey: ['candidate', 'skills'],
+    enabled: !!getAuthToken(),
     queryFn: () => apiFetch<CandidateSkill[]>('/candidates/profile/skills'),
   });
 }

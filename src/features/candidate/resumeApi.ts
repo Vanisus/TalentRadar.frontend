@@ -8,6 +8,7 @@ export interface ResumeRecommendationsResponse {
 export function useResumeRecommendations() {
   return useQuery<string[]>({
     queryKey: ['candidate', 'resume', 'recommendations'],
+    enabled: !!getAuthToken(),
     queryFn: async () => {
       const result = await apiFetch<ResumeRecommendationsResponse>(
         '/candidates/resume/recommendations',
@@ -24,9 +25,9 @@ export function useUploadResume() {
   return useMutation<void, Error, File>({
     mutationFn: async (file: File) => {
       const formData = new FormData();
-      formData.append('file', file); // поле file по схеме uploadresumecandidatesresumepost[file:2]
+      formData.append('file', file);
 
-      const token = getAuthToken(); // читает localStorage.getItem('token')
+      const token = getAuthToken();
 
       if (!token) {
         throw new Error('Нет токена авторизации');
@@ -68,7 +69,7 @@ export interface ResumeStatus {
 export function useResumeStatus() {
   return useQuery<ResumeStatus>({
     queryKey: ['candidate', 'resume', 'status'],
+    enabled: !!getAuthToken(),
     queryFn: () => apiFetch<ResumeStatus>('/candidates/profile/resume/status'),
   });
 }
-

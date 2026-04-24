@@ -1,6 +1,6 @@
 // src/features/hr/applications/applicationsApi.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiFetch } from '@/shared/api';
+import { apiFetch, getAuthToken } from '@/shared/api';
 import {
   type HRApplication,
   type ApplicationStatus,
@@ -12,6 +12,7 @@ import {
 export function useHRApplications() {
   return useQuery<HRApplication[]>({
     queryKey: ['hr', 'applications'],
+    enabled: !!getAuthToken(),
     queryFn: () => apiFetch<HRApplication[]>('/hr/applications'),
   });
 }
@@ -72,7 +73,6 @@ export function useLLMAnalyzeApplication() {
         method: 'POST',
       }),
     onSuccess: () => {
-      // Обновляем все списки откликов, чтобы match_summary появился
       qc.invalidateQueries({ queryKey: ['hr', 'applications'] });
       qc.invalidateQueries({ queryKey: ['hr', 'vacancies'] });
     },

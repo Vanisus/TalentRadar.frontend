@@ -13,6 +13,7 @@ export interface Certificate {
 export function useCertificates() {
   return useQuery<Certificate[]>({
     queryKey: ['candidate', 'certificates'],
+    enabled: !!getAuthToken(),
     queryFn: () => apiFetch<Certificate[]>('/candidates/profile/certificates'),
   });
 }
@@ -26,7 +27,7 @@ export function useUploadCertificate() {
       formData.append('file', file);
       if (title) formData.append('title', title);
 
-      const token = getAuthToken(); // читает localStorage.getItem('token')
+      const token = getAuthToken();
 
       if (!token) {
         throw new Error('Нет токена авторизации');
@@ -36,8 +37,7 @@ export function useUploadCertificate() {
         method: 'POST',
         body: formData,
         headers: {
-          Authorization: `Bearer ${token}`, // добавляем токен
-          // Content-Type НЕ ставим — браузер сам проставит boundary для multipart
+          Authorization: `Bearer ${token}`,
         },
       });
 

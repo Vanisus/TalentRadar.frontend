@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiFetch } from '../../../shared/api';
+import { apiFetch, getAuthToken } from '../../../shared/api';
 
 export interface Education {
   id: number;
@@ -24,6 +24,7 @@ export interface EducationCreate {
 export function useEducations() {
   return useQuery<Education[]>({
     queryKey: ['candidate', 'educations'],
+    enabled: !!getAuthToken(),
     queryFn: () => apiFetch<Education[]>('/candidates/profile/educations'),
   });
 }

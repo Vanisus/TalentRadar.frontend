@@ -1,6 +1,6 @@
 // src/features/hr/candidates/candidatesApi.ts
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiFetch } from '@/shared/api';
+import { apiFetch, getAuthToken } from '@/shared/api';
 import {
   type HRCandidate,
   type HRCandidateNote,
@@ -18,6 +18,7 @@ import {
 export function useHRCandidates() {
   return useQuery<HRCandidate[]>({
     queryKey: ['hr', 'candidates'],
+    enabled: !!getAuthToken(),
     queryFn: () => apiFetch<HRCandidate[]>('/hr/candidates'),
   });
 }
@@ -27,7 +28,7 @@ export function useHRCandidates() {
 export function useCandidateNotes(candidateId: number | null) {
   return useQuery<HRCandidateNote[]>({
     queryKey: ['hr', 'candidateNotes', candidateId],
-    enabled: candidateId != null,
+    enabled: candidateId != null && !!getAuthToken(),
     queryFn: () =>
       apiFetch<HRCandidateNote[]>(`/hr/candidates/${candidateId}/notes`),
   });
@@ -75,7 +76,7 @@ export function useDeleteCandidateNote() {
 export function useCandidateTags(candidateId: number | null) {
   return useQuery<HRCandidateTag[]>({
     queryKey: ['hr', 'candidateTags', candidateId],
-    enabled: candidateId != null,
+    enabled: candidateId != null && !!getAuthToken(),
     queryFn: () =>
       apiFetch<HRCandidateTag[]>(`/hr/candidates/${candidateId}/tags`),
   });
@@ -123,6 +124,7 @@ export function useDeleteCandidateTag() {
 export function useSavedSearches() {
   return useQuery<HRSavedSearch[]>({
     queryKey: ['hr', 'savedSearches'],
+    enabled: !!getAuthToken(),
     queryFn: () => apiFetch<HRSavedSearch[]>('/hr/candidates/searches'),
   });
 }

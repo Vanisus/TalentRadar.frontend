@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiFetch } from '../../shared/api';
+import { apiFetch, getAuthToken } from '../../shared/api';
 
 // Все вакансии теперь возвращают match_score (быстрый, без LLM)
 export interface VacancyWithMatchScore {
@@ -20,6 +20,7 @@ export type VacancyRead = VacancyWithMatchScore;
 export function useCandidateVacancies() {
   return useQuery<VacancyWithMatchScore[]>({
     queryKey: ['candidate', 'vacancies'],
+    enabled: !!getAuthToken(),
     queryFn: () => apiFetch<VacancyWithMatchScore[]>('/candidates/vacancies'),
   });
 }
@@ -42,6 +43,7 @@ export interface ApplicationRead {
 export function useCandidateApplications() {
   return useQuery<ApplicationRead[]>({
     queryKey: ['candidate', 'applications'],
+    enabled: !!getAuthToken(),
     queryFn: () => apiFetch<ApplicationRead[]>('/candidates/applications'),
   });
 }
@@ -52,6 +54,7 @@ export type RecommendedVacancy = VacancyWithMatchScore;
 export function useRecommendedVacancies(minScore: number = 50) {
   return useQuery<RecommendedVacancy[]>({
     queryKey: ['candidate', 'vacancies', 'recommended', minScore],
+    enabled: !!getAuthToken(),
     queryFn: async () => {
       try {
         return await apiFetch<RecommendedVacancy[]>(
@@ -90,6 +93,7 @@ export function useApplyToVacancy() {
 export function useCandidateVacancy(id: number) {
   return useQuery<VacancyWithMatchScore>({
     queryKey: ['candidate', 'vacancies', id],
+    enabled: !!getAuthToken(),
     queryFn: () => apiFetch<VacancyWithMatchScore>(`/candidates/vacancies/${id}`),
   });
 }
