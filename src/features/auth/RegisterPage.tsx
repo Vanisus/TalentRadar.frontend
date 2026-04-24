@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Paper, TextInput, PasswordInput, Button, Stack, Title, Text } from '@mantine/core';
+import { Paper, TextInput, PasswordInput, Button, Stack, Title } from '@mantine/core';
 import { useRegisterMutation } from './api';
+import { notifyError } from '../../shared/notifications';
 
 export function RegisterPage() {
   const [fullName, setFullName] = useState('');
@@ -12,25 +13,23 @@ export function RegisterPage() {
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  if (password !== passwordConfirm) {
-    console.log('passwords mismatch');
-    return;
-  }
-  console.log('submit register');
-  try {
-    await registerMutation.mutateAsync({
-      full_name: fullName,
-      email,
-      password,
-      password_confirm: passwordConfirm,
-    });
-    navigate('/', { replace: true });
-  } catch {
-    // ...
-  }
-};
-
+    e.preventDefault();
+    if (password !== passwordConfirm) {
+      notifyError('Пароли не совпадают.', 'Ошибка');
+      return;
+    }
+    try {
+      await registerMutation.mutateAsync({
+        full_name: fullName,
+        email,
+        password,
+        password_confirm: passwordConfirm,
+      });
+      navigate('/', { replace: true });
+    } catch (err) {
+      notifyError(err, 'Ошибка регистрации');
+    }
+  };
 
   return (
     <Stack align="center" justify="center" sx={{ minHeight: '100vh' }}>
@@ -65,15 +64,10 @@ export function RegisterPage() {
               onChange={(e) => setPasswordConfirm(e.currentTarget.value)}
               required
             />
-            {registerMutation.isError && (
-              <Text c="red" size="sm">
-                {registerMutation.error?.message}
-              </Text>
-            )}
-            <Button type="submit" loading={registerMutation.isLoading}>
+            <Button type="submit" loading={registerMutation.isPending}>
               Зарегистрироваться
             </Button>
-            <Button variant="subtle" onClick={() => navigate('/login')} disabled={registerMutation.isLoading}>
+            <Button variant="subtle" onClick={() => navigate('/login')} disabled={registerMutation.isPending}>
               Уже есть аккаунт? Войти
             </Button>
           </Stack>

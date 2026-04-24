@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Paper, TextInput, PasswordInput, Button, Stack, Title, Text } from '@mantine/core';
+import { Paper, TextInput, PasswordInput, Button, Stack, Title } from '@mantine/core';
 import { useLoginMutation } from './api';
+import { notifyError } from '../../shared/notifications';
 
 export function LoginPage() {
   const [email, setEmail] = useState('');
@@ -18,7 +19,7 @@ export function LoginPage() {
       await loginMutation.mutateAsync({ email, password });
       navigate(from, { replace: true });
     } catch (err) {
-      // ошибка уже в mutation.error.message
+      notifyError(err, 'Ошибка входа');
     }
   };
 
@@ -42,15 +43,10 @@ export function LoginPage() {
               onChange={(e) => setPassword(e.currentTarget.value)}
               required
             />
-            {loginMutation.isError && (
-              <Text c="red" size="sm">
-                {loginMutation.error?.message}
-              </Text>
-            )}
-            <Button type="submit" loading={loginMutation.isLoading}>
+            <Button type="submit" loading={loginMutation.isPending}>
               Войти
             </Button>
-            <Button variant="subtle" onClick={() => navigate('/register')} disabled={loginMutation.isLoading}>
+            <Button variant="subtle" onClick={() => navigate('/register')} disabled={loginMutation.isPending}>
               Нет аккаунта? Зарегистрироваться
             </Button>
           </Stack>

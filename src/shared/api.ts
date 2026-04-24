@@ -26,10 +26,13 @@ export async function apiFetch<T>(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const resp = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers,
-  });
+  let resp: Response;
+  try {
+    resp = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  } catch {
+    // Сетевая ошибка (offline, CORS, DNS)
+    throw new Error('Failed to fetch');
+  }
 
   if (resp.status === 401) {
     setAuthToken(null);
@@ -42,6 +45,9 @@ export async function apiFetch<T>(
       const data = await resp.json();
       if (typeof (data as any).detail === 'string') {
         message = (data as any).detail;
+      } else if (Array.isArray((data as any).detail)) {
+        // Pydantic validation errors — берём первое сообщение
+        message = (data as any).detail[0]?.msg ?? message;
       }
     } catch {
       // ignore
@@ -50,7 +56,6 @@ export async function apiFetch<T>(
   }
 
   if (resp.status === 204) {
-    // no content
     return null as T;
   }
 
