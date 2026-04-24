@@ -2,10 +2,20 @@
 import { useEffect, useState } from 'react';
 import {
   Tabs, Container, Stack, Title, Text, Card, Badge,
-  Group, Loader, Center, Button, Textarea, NumberInput, TextInput, Anchor
+  Group, Loader, Center, Button, Textarea, NumberInput, TextInput, Anchor,
+  ThemeIcon, Timeline, Divider,
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { useForm } from '@mantine/form';
+import {
+  IconCircleDot,
+  IconSearch,
+  IconCalendarEvent,
+  IconGift,
+  IconX,
+  IconClock,
+  IconCheck,
+} from '@tabler/icons-react';
 import type { ApplicationStatus } from './api';
 import { useCandidateProfile, useUpdateCandidateProfile } from './profileApi';
 import { PortfolioList } from './portfolio/PortfolioList';
@@ -18,26 +28,49 @@ import { EducationList } from './education/EducationList';
 import { Link } from 'react-router-dom';
 import { MatchScoreBadge } from '../../shared/MatchScoreBadge';
 
-// ─── Статус заявки ────────────────────────────────────────────────────────────
+// ─── Конфиг статусов ─────────────────────────────────────────────────────────
 
-function statusLabel(status: ApplicationStatus) {
-  switch (status) {
-    case 'new': return 'На рассмотрении';
-    case 'under_review': return 'В обработке';
-    case 'accepted': return 'Принято';
-    case 'rejected': return 'Отклонено';
-    default: return status;
-  }
-}
+const STATUS_CONFIG: Record<
+  ApplicationStatus,
+  { label: string; color: string; icon: React.ReactNode; description: string }
+> = {
+  new: {
+    label: 'Отправлен',
+    color: 'blue',
+    icon: <IconClock size={14} />,
+    description: 'Отклик получен, ждёт рассмотрения HR',
+  },
+  under_review: {
+    label: 'На рассмотрении',
+    color: 'yellow',
+    icon: <IconSearch size={14} />,
+    description: 'HR изучает ваш профиль',
+  },
+  accepted: {
+    label: 'Принят',
+    color: 'green',
+    icon: <IconCheck size={14} />,
+    description: 'Поздравляем! Вас пригласили к следующему этапу',
+  },
+  rejected: {
+    label: 'Отказ',
+    color: 'red',
+    icon: <IconX size={14} />,
+    description: 'К сожалению, кандидатура не подошла',
+  },
+};
 
-function statusColor(status: ApplicationStatus) {
-  switch (status) {
-    case 'new': return 'blue';
-    case 'under_review': return 'yellow';
-    case 'accepted': return 'green';
-    case 'rejected': return 'red';
-    default: return 'gray';
-  }
+const PIPELINE_CONFIG: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
+  new:        { label: 'Новый',              icon: <IconCircleDot size={14} />,    color: 'blue' },
+  screening:  { label: 'Скрининг',           icon: <IconSearch size={14} />,        color: 'violet' },
+  interview:  { label: 'Интервью',           icon: <IconCalendarEvent size={14} />, color: 'teal' },
+  offer:      { label: 'Оффер',              icon: <IconGift size={14} />,          color: 'green' },
+  rejected:   { label: 'Отказ',              icon: <IconX size={14} />,             color: 'red' },
+};
+
+function pipelineLabel(stage: string | null | undefined) {
+  if (!stage) return null;
+  return PIPELINE_CONFIG[stage] ?? { label: stage, icon: <IconCircleDot size={14} />, color: 'gray' };
 }
 
 // ─── Вакансии ────────────────────────────────────────────────────────────────
@@ -56,31 +89,35 @@ function VacanciesTab() {
       {data.map((v) => {
         const app = applications?.find((a) => a.vacancy_id === v.id);
         const isApplied = !!app;
+        const cfg = app ? STATUS_CONFIG[app.status] : null;
 
         return (
           <Card key={v.id} withBorder shadow="sm" radius="md" p="md">
             <Group justify="space-between" mb={6} align="flex-start">
               <Stack gap={4} style={{ flex: 1 }}>
-                <Anchor
-                  component={Link}
-                  to={`/candidate/vacancies/${v.id}`}
-                  fw={600}
-                  size="sm"
-                >
+                <Anchor component={Link} to={`/candidate/vacancies/${v.id}`} fw={600} size="sm">
                   {v.title}
                 </Anchor>
                 <Group gap="xs">
                   <Badge color={v.is_active ? 'green' : 'gray'} size="xs" variant="light">
                     {v.is_active ? 'Активна' : 'Неактивна'}
                   </Badge>
-                  {/* match_score показываем только если >= 50% и кандидат ещё не откликнулся */}
                   {!isApplied && <MatchScoreBadge score={v.match_score} size="xs" />}
                 </Group>
               </Stack>
 
-              {isApplied ? (
-                <Badge color={statusColor(app.status)} variant="light" size="sm">
-                  {statusLabel(app.status)}
+              {isApplied && cfg ? (
+                <Badge
+                  color={cfg.color}
+                  variant="light"
+                  size="sm"
+                  leftSection={
+                    <ThemeIcon size={12} color={cfg.color} variant="transparent">
+                      {cfg.icon}
+                    </ThemeIcon>
+                  }
+                >
+                  {cfg.label}
                 </Badge>
               ) : (
                 <Button
@@ -102,9 +139,7 @@ function VacanciesTab() {
             {v.required_skills.length > 0 && (
               <Group gap={4}>
                 {v.required_skills.slice(0, 6).map((s) => (
-                  <Badge key={s} variant="outline" size="xs" color="gray">
-                    {s}
-                  </Badge>
+                  <Badge key={s} variant="outline" size="xs" color="gray">{s}</Badge>
                 ))}
                 {v.required_skills.length > 6 && (
                   <Text size="xs" c="dimmed">+{v.required_skills.length - 6}</Text>
@@ -118,16 +153,133 @@ function VacanciesTab() {
   );
 }
 
-
 // ─── Мои отклики ─────────────────────────────────────────────────────────────
 
+function ApplicationCard({ app, vacancyTitle }: { app: ReturnType<typeof useCandidateApplications>['data'] extends Array<infer T> ? T : never; vacancyTitle?: string }) {
+  const cfg = STATUS_CONFIG[app.status];
+  const pipeline = pipelineLabel(app.pipeline_stage);
+
+  // Определяем шаги воронки для Timeline
+  const stages = [
+    { key: 'new',       label: 'Отклик отправлен' },
+    { key: 'screening', label: 'Скрининг' },
+    { key: 'interview', label: 'Интервью' },
+    { key: 'offer',     label: 'Оффер' },
+  ];
+  const currentStageIdx = stages.findIndex((s) => s.key === app.pipeline_stage);
+  const isRejected = app.status === 'rejected';
+
+  return (
+    <Card withBorder shadow="sm" radius="md" p="md">
+      {/* Шапка */}
+      <Group justify="space-between" align="flex-start" mb="xs">
+        <Stack gap={2}>
+          <Text fw={600} size="sm">
+            {vacancyTitle ?? `Вакансия #${app.vacancy_id}`}
+          </Text>
+          <Text size="xs" c="dimmed">
+            Отклик от{' '}
+            {new Date(app.created_at).toLocaleDateString('ru-RU', {
+              day: 'numeric', month: 'long', year: 'numeric',
+            })}
+          </Text>
+        </Stack>
+
+        <Badge
+          color={cfg.color}
+          variant="light"
+          size="md"
+          leftSection={
+            <ThemeIcon size={14} color={cfg.color} variant="transparent">
+              {cfg.icon}
+            </ThemeIcon>
+          }
+        >
+          {cfg.label}
+        </Badge>
+      </Group>
+
+      {/* Описание статуса */}
+      <Text size="xs" c="dimmed" mb="sm">{cfg.description}</Text>
+
+      {/* Этап воронки (pipeline) */}
+      {pipeline && (
+        <Group gap="xs" mb="sm">
+          <Badge
+            size="xs"
+            color={pipeline.color}
+            variant="dot"
+            leftSection={
+              <ThemeIcon size={10} color={pipeline.color} variant="transparent">
+                {pipeline.icon}
+              </ThemeIcon>
+            }
+          >
+            Этап: {pipeline.label}
+          </Badge>
+        </Group>
+      )}
+
+      {/* Прогресс воронки (только если не rejected и есть pipeline_stage) */}
+      {!isRejected && app.pipeline_stage && app.pipeline_stage !== 'new' && (
+        <>
+          <Divider my="xs" />
+          <Timeline
+            active={currentStageIdx}
+            bulletSize={18}
+            lineWidth={2}
+            color="teal"
+          >
+            {stages.map((s, i) => (
+              <Timeline.Item
+                key={s.key}
+                title={
+                  <Text size="xs" fw={i <= currentStageIdx ? 600 : 400} c={i <= currentStageIdx ? undefined : 'dimmed'}>
+                    {s.label}
+                  </Text>
+                }
+                bullet={
+                  i <= currentStageIdx
+                    ? <IconCheck size={10} />
+                    : <IconCircleDot size={10} />
+                }
+                color={i <= currentStageIdx ? 'teal' : 'gray'}
+              />
+            ))}
+          </Timeline>
+        </>
+      )}
+
+      {/* Оценка HR */}
+      {app.rating != null && (
+        <>
+          <Divider my="xs" />
+          <Group gap="xs">
+            <Text size="xs" c="dimmed">Оценка HR:</Text>
+            <Text size="xs">{'★'.repeat(app.rating)}{'☆'.repeat(5 - app.rating)}</Text>
+          </Group>
+        </>
+      )}
+
+      {/* match_score */}
+      {app.match_score > 0 && (
+        <Group gap="xs" mt="xs">
+          <Text size="xs" c="dimmed">Совпадение:</Text>
+          <Badge size="xs" color={app.match_score >= 70 ? 'green' : app.match_score >= 40 ? 'yellow' : 'red'} variant="light">
+            {Math.round(app.match_score)}%
+          </Badge>
+        </Group>
+      )}
+    </Card>
+  );
+}
+
 function ApplicationsTab() {
-  const { data: applications } = useCandidateApplications();
-  const { data: vacancies } = useCandidateVacancies();
+  const { data: applications, isLoading: appsLoading } = useCandidateApplications();
+  const { data: vacancies, isLoading: vacsLoading } = useCandidateVacancies();
 
-  const isLoading = !applications && !vacancies;
+  if (appsLoading || vacsLoading) return <Center mt="xl"><Loader /></Center>;
 
-  if (isLoading) return <Center mt="xl"><Loader /></Center>;
   if (!applications || applications.length === 0) {
     return (
       <Stack mt="md" align="center" py="xl">
@@ -136,40 +288,28 @@ function ApplicationsTab() {
     );
   }
 
+  // Сортировка: сначала активные (не rejected), потом rejected
+  const sorted = [...applications].sort((a, b) => {
+    if (a.status === 'rejected' && b.status !== 'rejected') return 1;
+    if (a.status !== 'rejected' && b.status === 'rejected') return -1;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+
   return (
     <Stack mt="md">
-      {applications.map((app) => {
+      {sorted.map((app) => {
         const vacancy = vacancies?.find((v) => v.id === app.vacancy_id);
         return (
-          <Card key={app.id} withBorder shadow="sm" radius="md" p="md">
-            <Group justify="space-between" align="flex-start">
-              <Stack gap={4}>
-                <Text fw={600} size="sm">
-                  {vacancy?.title ?? `Вакансия #${app.vacancy_id}`}
-                </Text>
-                <Text size="xs" c="dimmed">
-                  Отклик от {new Date(app.created_at).toLocaleDateString('ru-RU', {
-                    day: 'numeric', month: 'long', year: 'numeric',
-                  })}
-                </Text>
-                {app.pipeline_stage && (
-                  <Text size="xs" c="dimmed">Этап: {app.pipeline_stage}</Text>
-                )}
-                {app.rating != null && (
-                  <Text size="xs" c="dimmed">Оценка HR: {'★'.repeat(app.rating)}{'☆'.repeat(5 - app.rating)}</Text>
-                )}
-              </Stack>
-              <Badge color={statusColor(app.status)} variant="light" size="sm">
-                {statusLabel(app.status)}
-              </Badge>
-            </Group>
-          </Card>
+          <ApplicationCard
+            key={app.id}
+            app={app}
+            vacancyTitle={vacancy?.title}
+          />
         );
       })}
     </Stack>
   );
 }
-
 
 // ─── Навыки ───────────────────────────────────────────────────────────────────
 
@@ -259,9 +399,7 @@ function ResumeSection() {
               <Badge color="green">Резюме загружено</Badge>
             </Group>
             {!isEditing ? (
-              <Button size="xs" variant="subtle" onClick={() => setIsEditing(true)}>
-                Обновить
-              </Button>
+              <Button size="xs" variant="subtle" onClick={() => setIsEditing(true)}>Обновить</Button>
             ) : (
               <Group gap="xs">
                 <Text size="sm" c="dimmed">Выберите новый файл:</Text>
@@ -273,21 +411,8 @@ function ResumeSection() {
                 >
                   Выбрать файл
                 </Button>
-                <Button
-                  size="xs"
-                  variant="subtle"
-                  color="gray"
-                  onClick={() => setIsEditing(false)}
-                >
-                  Отмена
-                </Button>
-                <input
-                  id="resume-file-input"
-                  type="file"
-                  accept=".pdf,.doc,.docx"
-                  style={{ display: 'none' }}
-                  onChange={handleFileChange}
-                />
+                <Button size="xs" variant="subtle" color="gray" onClick={() => setIsEditing(false)}>Отмена</Button>
+                <input id="resume-file-input" type="file" accept=".pdf,.doc,.docx" style={{ display: 'none' }} onChange={handleFileChange} />
               </Group>
             )}
           </Group>
@@ -297,27 +422,13 @@ function ResumeSection() {
               <Badge color="orange" variant="light">Резюме не загружено</Badge>
               <Text size="xs" c="dimmed">Загрузите резюме, чтобы получать подбор вакансий</Text>
             </Group>
-            <Button
-              size="xs"
-              loading={uploadMutation.isPending}
-              onClick={() => document.getElementById('resume-file-input')?.click()}
-            >
-              Загрузить
-            </Button>
-            <input
-              id="resume-file-input"
-              type="file"
-              accept=".pdf,.doc,.docx"
-              style={{ display: 'none' }}
-              onChange={handleFileChange}
-            />
+            <Button size="xs" loading={uploadMutation.isPending} onClick={() => document.getElementById('resume-file-input')?.click()}>Загрузить</Button>
+            <input id="resume-file-input" type="file" accept=".pdf,.doc,.docx" style={{ display: 'none' }} onChange={handleFileChange} />
           </Group>
         )}
 
         {uploadMutation.isError && (
-          <Text c="red" size="sm" mt="xs">
-            {(uploadMutation.error as Error).message}
-          </Text>
+          <Text c="red" size="sm" mt="xs">{(uploadMutation.error as Error).message}</Text>
         )}
       </Card>
 
@@ -331,9 +442,7 @@ function ResumeSection() {
       ) : (
         <Stack>
           {data.map((rec, index) => (
-            <Card key={index} withBorder>
-              <Text size="sm">{rec}</Text>
-            </Card>
+            <Card key={index} withBorder><Text size="sm">{rec}</Text></Card>
           ))}
         </Stack>
       )}
@@ -397,27 +506,14 @@ function ProfileTab() {
           <Stack gap="xs">
             <Group justify="space-between" mb="xs">
               <Title order={4}>Основная информация</Title>
-              <Button size="xs" variant="subtle" onClick={() => setIsEditing(true)}>
-                Редактировать
-              </Button>
+              <Button size="xs" variant="subtle" onClick={() => setIsEditing(true)}>Редактировать</Button>
             </Group>
-
             <ProfileRow label="Город" value={data?.city} />
             <ProfileRow label="Желаемая должность" value={data?.desired_position} />
-            <ProfileRow
-              label="Желаемая зарплата"
-              value={data?.desired_salary ? `${data.desired_salary.toLocaleString('ru-RU')} ₽` : undefined}
-            />
+            <ProfileRow label="Желаемая зарплата" value={data?.desired_salary ? `${data.desired_salary.toLocaleString('ru-RU')} ₽` : undefined} />
             <ProfileRow label="Телефон" value={data?.phone} />
             <ProfileRow label="Telegram" value={data?.telegram} />
-            <ProfileRow
-              label="Дата рождения"
-              value={
-                data?.birth_date
-                  ? data.birth_date.split('-').reverse().join('.')
-                  : undefined
-              }
-            />
+            <ProfileRow label="Дата рождения" value={data?.birth_date ? data.birth_date.split('-').reverse().join('.') : undefined} />
             {data?.about_me && (
               <Stack gap={2} mt="xs">
                 <Text size="sm" c="dimmed" fw={500}>О себе</Text>
@@ -431,47 +527,19 @@ function ProfileTab() {
               <Group justify="space-between" mb="xs">
                 <Title order={4}>Редактирование профиля</Title>
               </Group>
-
               <TextInput label="Город" {...form.getInputProps('city')} />
               <TextInput label="Желаемая должность" {...form.getInputProps('desired_position')} />
-              <NumberInput
-                label="Желаемая зарплата"
-                {...form.getInputProps('desired_salary')}
-                min={0}
-              />
+              <NumberInput label="Желаемая зарплата" {...form.getInputProps('desired_salary')} min={0} />
               <TextInput label="Телефон" {...form.getInputProps('phone')} />
               <TextInput label="Telegram" {...form.getInputProps('telegram')} />
-              <DateInput
-                label="Дата рождения"
-                valueFormat="DD.MM.YYYY"
-                value={form.values.birth_date}
-                onChange={(value) => form.setFieldValue('birth_date', value)}
-              />
-              <Textarea
-                label="О себе"
-                minRows={3}
-                autosize
-                {...form.getInputProps('about_me')}
-              />
-
+              <DateInput label="Дата рождения" valueFormat="DD.MM.YYYY" value={form.values.birth_date} onChange={(value) => form.setFieldValue('birth_date', value)} />
+              <Textarea label="О себе" minRows={3} autosize {...form.getInputProps('about_me')} />
               {updateMutation.isError && (
-                <Text c="red" size="sm">
-                  {(updateMutation.error as Error).message}
-                </Text>
+                <Text c="red" size="sm">{(updateMutation.error as Error).message}</Text>
               )}
-
               <Group>
-                <Button type="submit" loading={updateMutation.isPending}>
-                  Сохранить
-                </Button>
-                <Button
-                  variant="subtle"
-                  color="gray"
-                  onClick={() => setIsEditing(false)}
-                  disabled={updateMutation.isPending}
-                >
-                  Отмена
-                </Button>
+                <Button type="submit" loading={updateMutation.isPending}>Сохранить</Button>
+                <Button variant="subtle" color="gray" onClick={() => setIsEditing(false)} disabled={updateMutation.isPending}>Отмена</Button>
               </Group>
             </Stack>
           </form>
@@ -488,29 +556,24 @@ function ProfileTab() {
   );
 }
 
-function ProfileRow({
-  label,
-  value,
-}: {
-  label: string;
-  value?: string | null;
-}) {
+function ProfileRow({ label, value }: { label: string; value?: string | null }) {
   if (!value) return null;
   return (
     <Group gap="xs">
-      <Text size="sm" c="dimmed" fw={500} w={180}>
-        {label}:
-      </Text>
+      <Text size="sm" c="dimmed" fw={500} w={180}>{label}:</Text>
       <Text size="sm">{value}</Text>
     </Group>
   );
 }
 
-
 // ─── Главный дашборд ──────────────────────────────────────────────────────────
 
 export function CandidateDashboard() {
   const [tab, setTab] = useState<string | null>('vacancies');
+  const { data: applications } = useCandidateApplications();
+
+  // Счётчик активных откликов (не rejected) для таба
+  const activeApps = applications?.filter((a) => a.status !== 'rejected').length ?? 0;
 
   return (
     <Container fluid py="md">
@@ -520,19 +583,22 @@ export function CandidateDashboard() {
       <Tabs value={tab} onChange={setTab}>
         <Tabs.List>
           <Tabs.Tab value="vacancies">Вакансии</Tabs.Tab>
-          <Tabs.Tab value="applications">Мои отклики</Tabs.Tab>
+          <Tabs.Tab
+            value="applications"
+            rightSection={
+              activeApps > 0
+                ? <Badge size="xs" color="blue" variant="filled" circle>{activeApps}</Badge>
+                : undefined
+            }
+          >
+            Мои отклики
+          </Tabs.Tab>
           <Tabs.Tab value="profile">Профиль</Tabs.Tab>
         </Tabs.List>
 
-        <Tabs.Panel value="vacancies">
-          <VacanciesTab />
-        </Tabs.Panel>
-        <Tabs.Panel value="applications">
-          <ApplicationsTab />
-        </Tabs.Panel>
-        <Tabs.Panel value="profile">
-          <ProfileTab />
-        </Tabs.Panel>
+        <Tabs.Panel value="vacancies"><VacanciesTab /></Tabs.Panel>
+        <Tabs.Panel value="applications"><ApplicationsTab /></Tabs.Panel>
+        <Tabs.Panel value="profile"><ProfileTab /></Tabs.Panel>
       </Tabs>
     </Container>
   );
