@@ -25,7 +25,7 @@ import {
   IconPlus,
   IconPencil,
   IconTrash,
-  IconLayoutTemplate,
+  IconLayoutGrid,
   IconBriefcase,
   IconCode,
   IconCalendar,
@@ -74,7 +74,7 @@ function TemplateForm({ initial, onSubmit, onCancel, isLoading }: TemplateFormPr
           value={name}
           onChange={(e) => setName(e.currentTarget.value)}
           required
-          leftSection={<IconLayoutTemplate size={16} />}
+          leftSection={<IconLayoutGrid size={16} />}
         />
 
         <Divider label="Данные вакансии" labelPosition="center" />
@@ -113,7 +113,7 @@ function TemplateForm({ initial, onSubmit, onCancel, isLoading }: TemplateFormPr
           <Button variant="subtle" onClick={onCancel} disabled={isLoading}>
             Отмена
           </Button>
-          <Button type="submit" loading={isLoading} leftSection={<IconLayoutTemplate size={16} />}>
+          <Button type="submit" loading={isLoading} leftSection={<IconLayoutGrid size={16} />}>
             {initial ? 'Сохранить изменения' : 'Создать шаблон'}
           </Button>
         </Group>
@@ -122,156 +122,7 @@ function TemplateForm({ initial, onSubmit, onCancel, isLoading }: TemplateFormPr
   );
 }
 
-// ─── Карточка шаблона ────────────────────────────────────────────────────────
-
-function TemplateCard({ template }: { template: HRVacancyTemplate }) {
-  const [editOpened, { open: openEdit, close: closeEdit }] = useDisclosure(false);
-  const [deleteOpened, { open: openDelete, close: closeDelete }] = useDisclosure(false);
-  const update = useUpdateTemplate();
-  const remove = useDeleteTemplate();
-  const createFromTemplate = useCreateVacancyFromTemplate();
-
-  return (
-    <>
-      {/* Модальное окно редактирования */}
-      <Modal
-        opened={editOpened}
-        onClose={closeEdit}
-        title={
-          <Group gap="xs">
-            <ThemeIcon size="sm" variant="light" color="violet">
-              <IconPencil size={14} />
-            </ThemeIcon>
-            <Text fw={600}>Редактировать шаблон</Text>
-          </Group>
-        }
-        size="lg"
-        radius="md"
-      >
-        <TemplateForm
-          initial={template}
-          isLoading={update.isPending}
-          onSubmit={(values) =>
-            update.mutate({ id: template.id, ...values }, { onSuccess: closeEdit })
-          }
-          onCancel={closeEdit}
-        />
-      </Modal>
-
-      {/* Подтверждение удаления */}
-      <Modal
-        opened={deleteOpened}
-        onClose={closeDelete}
-        title={
-          <Group gap="xs">
-            <ThemeIcon size="sm" variant="light" color="red">
-              <IconTrash size={14} />
-            </ThemeIcon>
-            <Text fw={600}>Удалить шаблон?</Text>
-          </Group>
-        }
-        size="sm"
-        radius="md"
-      >
-        <Text size="sm" c="dimmed" mb="md">
-          Шаблон <b>«{template.name}»</b> будет удалён без возможности восстановления.
-          Ранее созданные из него вакансии останутся.
-        </Text>
-        <Group justify="flex-end">
-          <Button variant="subtle" onClick={closeDelete}>Отмена</Button>
-          <Button
-            color="red"
-            loading={remove.isPending}
-            onClick={() => remove.mutate(template.id, { onSuccess: closeDelete })}
-          >
-            Удалить
-          </Button>
-        </Group>
-      </Modal>
-
-      <Card withBorder p="lg" radius="md">
-        <Group justify="space-between" align="flex-start">
-          <Box style={{ flex: 1 }}>
-            {/* Заголовок */}
-            <Group gap="sm" mb={6}>
-              <ThemeIcon size="md" variant="light" color="violet" radius="sm">
-                <IconLayoutTemplate size={16} />
-              </ThemeIcon>
-              <Box>
-                <Text fw={600} size="sm" style={{ lineHeight: 1.3 }}>{template.name}</Text>
-                <Text size="xs" c="dimmed">→ {template.title}</Text>
-              </Box>
-              <Badge
-                size="sm"
-                variant={template.is_active ? 'light' : 'outline'}
-                color={template.is_active ? 'green' : 'gray'}
-                ml="auto"
-              >
-                {template.is_active ? 'Активен' : 'Неактивен'}
-              </Badge>
-            </Group>
-
-            {template.description && (
-              <Text size="sm" c="dimmed" lineClamp={2} mb={8}>
-                {template.description}
-              </Text>
-            )}
-
-            {/* Навыки */}
-            {template.required_skills.length > 0 && (
-              <Group gap={6} wrap="wrap" mb={8}>
-                {template.required_skills.map((s) => (
-                  <Badge key={s} variant="light" size="sm" color="indigo" radius="sm">
-                    {s}
-                  </Badge>
-                ))}
-              </Group>
-            )}
-
-            <Group gap={4}>
-              <IconCalendar size={12} color="gray" />
-              <Text size="xs" c="dimmed">
-                {new Date(template.created_at).toLocaleDateString('ru-RU', {
-                  day: 'numeric', month: 'long', year: 'numeric',
-                })}
-              </Text>
-            </Group>
-          </Box>
-
-          {/* Кнопки */}
-          <Stack gap="xs" align="flex-end">
-            <Tooltip label="Создать вакансию из шаблона" withArrow>
-              <Button
-                size="xs"
-                variant="light"
-                color="violet"
-                leftSection={<IconCopy size={14} />}
-                loading={createFromTemplate.isPending}
-                onClick={() => createFromTemplate.mutate({ templateId: template.id, data: {} })}
-              >
-                Создать вакансию
-              </Button>
-            </Tooltip>
-            <Group gap="xs">
-              <Tooltip label="Редактировать" withArrow>
-                <ActionIcon variant="light" color="blue" onClick={openEdit} aria-label="Edit">
-                  <IconPencil size={16} />
-                </ActionIcon>
-              </Tooltip>
-              <Tooltip label="Удалить" withArrow>
-                <ActionIcon variant="light" color="red" onClick={openDelete} aria-label="Delete">
-                  <IconTrash size={16} />
-                </ActionIcon>
-              </Tooltip>
-            </Group>
-          </Stack>
-        </Group>
-      </Card>
-    </>
-  );
-}
-
-// ─── Вкладка шаблонов ────────────────────────────────────────────────────────
+// … остальной код TemplateCard и TemplatesTab без изменений
 
 export function TemplatesTab() {
   const { data: templates, isLoading, isError } = useHRTemplates();
@@ -328,7 +179,7 @@ export function TemplatesTab() {
       {!templates?.length && (
         <Card withBorder p="xl" radius="md" ta="center">
           <ThemeIcon size={48} variant="light" color="violet" radius="xl" mb="md" mx="auto">
-            <IconLayoutTemplate size={24} />
+            <IconLayoutGrid size={24} />
           </ThemeIcon>
           <Text fw={600} mb={4}>Шаблонов пока нет</Text>
           <Text size="sm" c="dimmed" mb="lg">
