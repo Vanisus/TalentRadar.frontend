@@ -1,30 +1,17 @@
 import { useEffect } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
-import { AppShell, Group, Text, Center, Loader } from '@mantine/core';
+import { AppShell, Center, Loader } from '@mantine/core';
 import { LoginPage } from './features/auth/LoginPage';
 import { RegisterPage } from './features/auth/RegisterPage';
 import { CandidateDashboard } from './features/candidate/CandidateDashboard';
 import { HRDashboard } from './features/hr/HRDashboard';
+import { AdminDashboard } from './features/admin/AdminDashboard';
 import { HrVacancyDetailsPage } from './features/hr/vacancies/HrVacancyDetailsPage';
 import { HrCandidatePage } from './features/hr/candidates/HrCandidatePage';
 import { VacancyPage } from '@/features/candidate/VacancyPage';
 import { AppHeader } from '@/widgets/AppHeader/AppHeader';
 import { useCurrentUser } from './shared/auth';
 import type { UserRole } from './shared/auth';
-
-// ДОБАВИТЬ импорт вверху:
-
-
-// Временные заглушки дашбордов — потом заменим реальными
-
-
-function AdminDashboard() {
-  return (
-    <Center sx={{ height: '100%' }}>
-      <Text>Admin dashboard</Text>
-    </Center>
-  );
-}
 
 function ProtectedRoute({ allowedRoles, children }: { allowedRoles: UserRole[]; children?: React.ReactNode }) {
   const { data: user, isLoading } = useCurrentUser();
@@ -72,7 +59,6 @@ export default function App() {
   const location = useLocation();
 
   useEffect(() => {
-    // если уже залогинен и зашёл на /login или /register — редиректим на корень
     if (!isLoading && user && (location.pathname === '/login' || location.pathname === '/register')) {
       navigate('/', { replace: true });
     }
@@ -86,12 +72,11 @@ export default function App() {
     );
   }
 
-    return (
+  return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/register" element={<RegisterPage />} />
 
-      {/* страница детали вакансии для залогиненных HR/admin */}
       <Route
         path="/hr/vacancies/:id"
         element={
@@ -118,9 +103,6 @@ export default function App() {
       />
       <Route path="/candidate/vacancies/:id" element={<VacancyPage />} />
 
-
-
-      {/* корень: если не залогинен — на /login, если залогинен — в свой дашборд */}
       <Route
         path="/"
         element={
@@ -136,7 +118,7 @@ export default function App() {
         path="*"
         element={
           <Center sx={{ height: '100vh' }}>
-            <Text>Страница не найдена</Text>
+            <Navigate to="/" replace />
           </Center>
         }
       />
