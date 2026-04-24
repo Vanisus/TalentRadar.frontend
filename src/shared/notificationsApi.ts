@@ -12,8 +12,10 @@ export interface Notification {
 }
 
 function notificationsEndpoint(role: string | undefined) {
-  if (role === 'hr' || role === 'admin') return '/hr/notifications';
-  return '/candidates/notifications';
+  if (role === 'hr') return '/hr/notifications';
+  if (role === 'candidate') return '/candidates/notifications';
+  // Для admin пока отдельного эндпоинта нет — не ходим никуда
+  return null;
 }
 
 export function useNotifications() {
@@ -22,8 +24,8 @@ export function useNotifications() {
 
   return useQuery<Notification[]>({
     queryKey: ['notifications', user?.role],
-    queryFn: () => apiFetch<Notification[]>(endpoint),
-    enabled: !!user,
+    queryFn: () => apiFetch<Notification[]>(endpoint as string),
+    enabled: !!user && !!endpoint,
     refetchInterval: 30_000, // polling каждые 30 сек
   });
 }
@@ -35,8 +37,14 @@ export function useMarkNotificationRead() {
 
   return useMutation<void, Error, number>({
     mutationFn: (id: number) => {
-      const base = role === 'hr' || role === 'admin' ? '/hr' : '/candidates';
-      return apiFetch<void>(`${base}/notifications/${id}/read`, { method: 'PATCH' });
+      if (role === 'hr') {
+        return apiFetch<void>(`/hr/notifications/${id}/read`, { method: 'PATCH' });
+      }
+      if (role === 'candidate') {
+        return apiFetch<void>(`/candidates/notifications/${id}/read`, { method: 'PATCH' });
+      }
+      // admin или неизвестная роль — ничего не делаем
+      return Promise.resolve();
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['notifications', role] });
@@ -51,7 +59,11 @@ export function useMarkAllNotificationsRead() {
 
   return useMutation<void, Error, Notification[]>({
     mutationFn: async (notifications: Notification[]) => {
-      const base = role === 'hr' || role === 'admin' ? '/hr' : '/candidates';
+      if (role !== 'hr' && role !== 'candidate') {
+        // admin — пропускаем
+        return;
+      }
+      const base = role === 'hr' ? '/hr' : '/candidates';
       const unread = notifications.filter((n) => !n.is_read);
       await Promise.all(
         unread.map((n) =>

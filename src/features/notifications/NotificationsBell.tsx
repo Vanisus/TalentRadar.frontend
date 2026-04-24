@@ -15,6 +15,7 @@ import {
 } from '@mantine/core';
 import { IconBell, IconBellCheck, IconCheck } from '@tabler/icons-react';
 import { useState } from 'react';
+import { useCurrentUser } from '@/shared/auth';
 import {
   useMarkAllNotificationsRead,
   useMarkNotificationRead,
@@ -35,9 +36,13 @@ function notificationIcon(msg: string) {
 
 export function NotificationsBell() {
   const [opened, setOpened] = useState(false);
+  const { data: user } = useCurrentUser();
   const { data, isLoading } = useNotifications();
   const markRead = useMarkNotificationRead();
   const markAll = useMarkAllNotificationsRead();
+
+  // Для админа уведомлений пока нет — не показываем колокол
+  if (user?.role === 'admin') return null;
 
   const notifications = data ?? [];
   const unread = notifications.filter((n) => !n.is_read);
