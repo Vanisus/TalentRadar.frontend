@@ -1,7 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiFetch, getAuthToken } from '../../shared/api';
 
-// Все вакансии теперь возвращают match_score (быстрый, без LLM)
 export interface VacancyWithMatchScore {
   id: number;
   title: string;
@@ -48,7 +47,6 @@ export function useCandidateApplications() {
   });
 }
 
-/** Рекомендованные — это те же вакансии, но отфильтрованные по score. */
 export type RecommendedVacancy = VacancyWithMatchScore;
 
 export function useRecommendedVacancies(minScore: number = 50) {
@@ -61,9 +59,7 @@ export function useRecommendedVacancies(minScore: number = 50) {
           `/candidates/vacancies/recommended?min_score=${minScore}`,
         );
       } catch (e: any) {
-        if (e instanceof Error && e.message.startsWith('HTTP 400')) {
-          return [];
-        }
+        if (e instanceof Error && e.message.startsWith('HTTP 400')) return [];
         throw e;
       }
     },
@@ -85,7 +81,9 @@ export function useApplyToVacancy() {
         body: JSON.stringify(payload),
       }),
     onSuccess: () => {
+      // Инвалидируем оба списка — кнопка сразу переключается на бейдж статуса
       qc.invalidateQueries({ queryKey: ['candidate', 'applications'] });
+      qc.invalidateQueries({ queryKey: ['candidate', 'vacancies'] });
     },
   });
 }
