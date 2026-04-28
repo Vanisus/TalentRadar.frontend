@@ -80,10 +80,52 @@ export function useApplyToVacancy() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       }),
-    onSuccess: () => {
-      // Инвалидируем оба списка — кнопка сразу переключается на бейдж статуса
-      qc.invalidateQueries({ queryKey: ['candidate', 'applications'] });
+
+    // Оптимистичное обновление: сразу добавляем запись в кеш без ожидания сервера
+    onMutate: async (payload) => {
+      // Отменяем фоновый refetch, чтобы он не перетёр оптимистику
+      await qc.cancelQueries({ queryKey: ['candidate', 'applications'] });
+
+      // Сохраняем снапшот для роллбэка
+      const previous = qc.getQueryData<ApplicationRead[]>(['candidate', 'applications']);
+
+      // Оптимистично добавляем временную запись
+      const optimistic: ApplicationRead = {
+        id: -1, // временный id, заменится после onSuccess
+        vacancy_id: payload.vacancy_id,
+        candidate_id: 0,
+        status: 'new',
+        match_score: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        rating: null,
+        pipeline_stage: null,
+        match_summary: null,
+      };
+
+      qc.setQueryData<ApplicationRead[]>(
+        ['candidate', 'applications'],
+        (old) => [...(old ?? []), optimistic],
+      );
+
+      return { previous };
+    },
+
+    onSuccess: (data) => {
+      // Заменяем временную запись (-1) на реальную с сервера
+      qc.setQueryData<ApplicationRead[]>(
+        ['candidate', 'applications'],
+        (old) => (old ?? []).map((a) => (a.id === -1 ? data : a)),
+      );
+      // Сбрасываем вакансии только один раз
       qc.invalidateQueries({ queryKey: ['candidate', 'vacancies'] });
+    },
+
+    onError: (_err, _vars, context) => {
+      // Откатываем оптимистичное изменение
+      if (context?.previous !== undefined) {
+        qc.setQueryData(['candidate', 'applications'], context.previous);
+      }
     },
   });
 }
