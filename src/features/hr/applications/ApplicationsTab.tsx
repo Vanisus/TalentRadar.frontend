@@ -50,7 +50,7 @@ function AISummaryBlock({ app }: { app: HRApplication }) {
       <Divider my="xs" />
       <Group justify="space-between" align="center">
         <Group gap="xs">
-          <ThemeIcon size="xs" variant="transparent" color="violet">✧</ThemeIcon>
+          <ThemeIcon size="xs" variant="transparent" color="violet">❇</ThemeIcon>
           <Text size="xs" fw={600} c="dimmed" tt="uppercase" style={{ letterSpacing: '0.05em' }}>
             Первичная информация (AI)
           </Text>
@@ -135,6 +135,11 @@ function ApplicationRow({ app }: { app: HRApplication }) {
   const isRejected = app.status === 'rejected';
   const isAccepted = app.status === 'accepted';
 
+  const vacancyLabel = app.vacancy_title ?? `Вакансия #${app.vacancy_id}`;
+  const candidateLabel = app.candidate_full_name
+    ? `${app.candidate_full_name} (${app.candidate_email ?? app.candidate_id})`
+    : (app.candidate_email ?? `Кандидат #${app.candidate_id}`);
+
   return (
     <Card
       withBorder
@@ -148,10 +153,10 @@ function ApplicationRow({ app }: { app: HRApplication }) {
           <Group gap="xs">
             <Text fw={600} size="sm">Отклик #{app.id}</Text>
             <Badge size="xs" variant="light" color="gray">
-              Вакансия #{app.vacancy_id}
+              {vacancyLabel}
             </Badge>
             <Badge size="xs" variant="light" color="gray">
-              Кандидат #{app.candidate_id}
+              {candidateLabel}
             </Badge>
             <Badge
               size="xs"
