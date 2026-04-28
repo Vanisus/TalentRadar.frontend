@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import {
   Tabs, Container, Stack, Title, Text, Card, Badge,
   Group, Loader, Center, Button, Textarea, NumberInput, TextInput, Anchor,
-  ThemeIcon, Timeline, Divider,
+  ThemeIcon, Timeline, Divider, Alert,
 } from '@mantine/core';
 import { DateInput } from '@mantine/dates';
 import { useForm } from '@mantine/form';
@@ -15,6 +15,7 @@ import {
   IconX,
   IconClock,
   IconCheck,
+  IconFileUpload,
 } from '@tabler/icons-react';
 import type { ApplicationStatus } from './api';
 import { useCandidateProfile, useUpdateCandidateProfile } from './profileApi';
@@ -76,9 +77,30 @@ function pipelineLabel(stage: string | null | undefined) {
 // ─── Вакансии ────────────────────────────────────────────────────────────────
 
 function VacanciesTab() {
+  const { data: resumeStatus, isLoading: resumeLoading } = useResumeStatus();
   const { data, isLoading, isError, error } = useCandidateVacancies();
   const { data: applications } = useCandidateApplications();
   const applyMutation = useApplyToVacancy();
+
+  // Пока резюме-статус грузится — показываем лоадер
+  if (resumeLoading) return <Center mt="xl"><Loader /></Center>;
+
+  // Резюме не загружено — блокируем доступ к вакансиям
+  if (!resumeStatus?.has_resume_file) {
+    return (
+      <Alert
+        mt="lg"
+        icon={<IconFileUpload size={18} />}
+        title="Резюме не загружено"
+        color="orange"
+        variant="light"
+        radius="md"
+      >
+        Чтобы просматривать вакансии и откликаться на них, сначала загрузите резюме во вкладке{' '}
+        <Text span fw={600} c="orange">Профиль</Text>.
+      </Alert>
+    );
+  }
 
   if (isLoading) return <Center mt="xl"><Loader /></Center>;
   if (isError) return <Text c="red" mt="md">{(error as Error).message}</Text>;
@@ -124,7 +146,7 @@ function VacanciesTab() {
                   size="xs"
                   variant="light"
                   disabled={!v.is_active || applyMutation.isPending}
-                  loading={applyMutation.isPending}
+                  loading={applyMutation.isPending && applyMutation.variables?.vacancy_id === v.id}
                   onClick={() => applyMutation.mutate({ vacancy_id: v.id })}
                 >
                   Откликнуться
@@ -159,7 +181,6 @@ function ApplicationCard({ app, vacancyTitle }: { app: ReturnType<typeof useCand
   const cfg = STATUS_CONFIG[app.status];
   const pipeline = pipelineLabel(app.pipeline_stage);
 
-  // Определяем шаги воронки для Timeline
   const stages = [
     { key: 'new',       label: 'Отклик отправлен' },
     { key: 'screening', label: 'Скрининг' },
@@ -171,7 +192,6 @@ function ApplicationCard({ app, vacancyTitle }: { app: ReturnType<typeof useCand
 
   return (
     <Card withBorder shadow="sm" radius="md" p="md">
-      {/* Шапка */}
       <Group justify="space-between" align="flex-start" mb="xs">
         <Stack gap={2}>
           <Text fw={600} size="sm">
@@ -199,10 +219,8 @@ function ApplicationCard({ app, vacancyTitle }: { app: ReturnType<typeof useCand
         </Badge>
       </Group>
 
-      {/* Описание статуса */}
       <Text size="xs" c="dimmed" mb="sm">{cfg.description}</Text>
 
-      {/* Этап воронки (pipeline) */}
       {pipeline && (
         <Group gap="xs" mb="sm">
           <Badge
@@ -220,7 +238,6 @@ function ApplicationCard({ app, vacancyTitle }: { app: ReturnType<typeof useCand
         </Group>
       )}
 
-      {/* Прогресс воронки (только если не rejected и есть pipeline_stage) */}
       {!isRejected && app.pipeline_stage && app.pipeline_stage !== 'new' && (
         <>
           <Divider my="xs" />
@@ -250,7 +267,6 @@ function ApplicationCard({ app, vacancyTitle }: { app: ReturnType<typeof useCand
         </>
       )}
 
-      {/* Оценка HR */}
       {app.rating != null && (
         <>
           <Divider my="xs" />
@@ -261,7 +277,6 @@ function ApplicationCard({ app, vacancyTitle }: { app: ReturnType<typeof useCand
         </>
       )}
 
-      {/* match_score */}
       {app.match_score > 0 && (
         <Group gap="xs" mt="xs">
           <Text size="xs" c="dimmed">Совпадение:</Text>
@@ -288,7 +303,6 @@ function ApplicationsTab() {
     );
   }
 
-  // Сортировка: сначала активные (не rejected), потом rejected
   const sorted = [...applications].sort((a, b) => {
     if (a.status === 'rejected' && b.status !== 'rejected') return 1;
     if (a.status !== 'rejected' && b.status === 'rejected') return -1;
@@ -572,7 +586,6 @@ export function CandidateDashboard() {
   const [tab, setTab] = useState<string | null>('vacancies');
   const { data: applications } = useCandidateApplications();
 
-  // Счётчик активных откликов (не rejected) для таба
   const activeApps = applications?.filter((a) => a.status !== 'rejected').length ?? 0;
 
   return (
