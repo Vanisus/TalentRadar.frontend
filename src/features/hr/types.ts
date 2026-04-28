@@ -61,7 +61,11 @@ export type ApplicationStatus = 'new' | 'under_review' | 'accepted' | 'rejected'
 export interface HRApplication {
   id: number;
   vacancy_id: number;
+  vacancy_title?: string | null;
   candidate_id: number;
+  candidate_email?: string | null;
+  candidate_full_name?: string | null;
+  resume_path?: string | null;
   status: ApplicationStatus;
   match_score: number;
   created_at: string;
@@ -94,7 +98,6 @@ export interface HRCandidate {
   desired_position?: string | null;
   desired_salary?: number | null;
   phone?: string | null;
-  // сюда можно добавить поля из HRCandidateShort (has_resume, skills_count и т.п.)
 }
 
 // ─── Заметки по кандидатам ───────────────────────────────────────────────────
@@ -110,8 +113,6 @@ export interface HRCandidateNote {
     full_name: string;
   };
 }
-
-
 
 export interface HRCandidateNoteCreate {
   body: string;
@@ -135,19 +136,6 @@ export interface HRNotification {
   message: string;
   is_read: boolean;
   created_at: string;
-}
-
-export interface HRApplication {
-  id: number;
-  vacancy_id: number;
-  candidate_id: number;
-  status: ApplicationStatus;
-  match_score: number;
-  created_at: string;
-  updated_at: string;
-  rating?: number | null;
-  pipeline_stage?: string | null;
-  match_summary?: string | null;
 }
 
 // ─── Теги по кандидатам ──────────────────────────────────────────────────────
@@ -232,4 +220,3 @@ export interface HRSavedSearchCreate {
   min_match_score?: number | null;
   search_text?: string | null;
 }
-
